@@ -1,0 +1,43 @@
+name:                db-monitor
+version:             0.1.0.0
+github:              "Pandora-MCCME/db-monitor"
+license:             BSD3
+author:              "Vitalii Guzeev"
+maintainer:          "viviag@yandex.ru"
+copyright:           "2021 MCCME"
+
+extra-source-files:
+- README.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:    Please see the README on GitHub at <https://github.com/Pandora-MCCME/db-monitor#readme>
+
+dependencies:
+- base >= 4.7
+- text
+- bytestring
+- dhall
+- telegram-bot-simple
+- hasql
+- optparse-applicative
+- hinotify
+
+library:
+  source-dirs: src
+
+executables:
+  dbmonitor:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - db-monitor
