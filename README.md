@@ -24,7 +24,7 @@ Structure of the directory is the following (in terms of `ls -R` command output)
 conf.dhall check1.sql check2.sql check3.sql ...
 ```
 
-`conf.dhall` is a configuration file for single database. Name of the file is fixed. It stores connection string, list of Telegram handles of alert-receivers, string which should prefix messages and some other default settings.
+`conf.dhall` is a configuration file for single database. Name of the file is fixed. It stores connection string, list of Telegram handles of alert-receivers (channels), string which should prefix messages and some other default settings.
 
 Example contents of `conf.dhall`:
 ```

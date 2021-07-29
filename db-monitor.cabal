@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: ec02cd23a3523abd1e94a190d696936adadba2981042d905a38b5ee9f9a01b03
+-- hash: 12a386d24abd7c3bdd228103d2709dcbe31f183233ac6f350bd874c994bd81af
 
 name:           db-monitor
 version:        0.1.0.0
@@ -29,6 +29,8 @@ library
       Monitor.Config
       Monitor.DataModel
       Monitor.DB
+      Monitor.Entry
+      Monitor.Options
       Monitor.Queue
       Monitor.Telegram
   other-modules:
@@ -38,9 +40,9 @@ library
   build-depends:
       base >=4.7
     , bytestring
-    , cron
     , dhall
     , hasql
+    , hinotify
     , optparse-applicative
     , telegram-bot-simple
     , text
@@ -56,10 +58,10 @@ executable dbmonitor
   build-depends:
       base >=4.7
     , bytestring
-    , cron
     , db-monitor
     , dhall
     , hasql
+    , hinotify
     , optparse-applicative
     , telegram-bot-simple
     , text
