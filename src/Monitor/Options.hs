@@ -1,7 +1,6 @@
 module Monitor.Options where
 
 import Options.Applicative
-import Data.Semigroup ((<>))
 
 data Options = Options {
     optionsDir   :: FilePath

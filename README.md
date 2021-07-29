@@ -29,7 +29,7 @@ conf.dhall check1.sql check2.sql check3.sql ...
 Example contents of `conf.dhall`:
 ```
 { connection = "host=localhost user=user port=5432 dbname=postgres password=password"
-, users = ["login1", "login2", "login3"]
+, channels = ["name1", "name2", "name3"]
 , preamble = "Big Brother is watching your data:"
 , frequency = 1 -- Default period in minutes between checks.
 , assertion = "null" -- Default assertion made against result of any query.

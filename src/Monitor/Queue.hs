@@ -1,4 +1,8 @@
 module Monitor.Queue where
 
-f :: ()
-f = ()
+import Control.Monad.Reader
+
+import Monitor.Config
+
+buildQueue :: [FilePath] -> ReaderT Settings IO ()
+buildQueue = undefined

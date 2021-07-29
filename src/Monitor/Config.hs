@@ -1,4 +1,68 @@
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE DataKinds #-}
 module Monitor.Config where
 
-f :: ()
-f = ()
+import System.FilePath
+
+import qualified Data.ByteString.Char8 as BSC
+
+import qualified Hasql.Connection as HaSQL
+
+import Dhall ( Generic, auto, inputFile, FromDhall, Natural )
+import Dhall.Deriving
+
+import Monitor.DataModel
+
+data Config = Config
+  { configConnection :: String
+  , configChannels :: [String]
+  , configPreamble :: String
+  , configFrequency :: Natural
+  , configAssertion :: String
+  }
+  deriving (Eq, Show, Generic)
+  deriving
+    (FromDhall)
+    via Codec (Dhall.Deriving.Field (SnakeCase <<< DropPrefix "config")) Config
+
+data Settings = Settings
+  { dbConnection :: HaSQL.Connection
+  , channels :: [String]
+  , preambleText :: String
+  , defaultFrequency :: Int
+  , defaultAssertion :: Assertion
+  , telegramTokenVar :: String
+  , databaseDirectory :: FilePath
+  }
+
+readAssertion :: String -> Assertion
+readAssertion "null" = AssertNull
+readAssertion "true" = AssertTrue
+readAssertion "false" = AssertFalse
+readAssertion "zero" = AssertZero
+-- NOTE: mention in README.
+readAssertion _ = AssertNotNull
+
+readSettings :: FilePath -> String -> FilePath -> IO (Maybe Settings)
+readSettings dbDir tokenVar configName = do
+  cfg <- (inputFile auto (dbDir </> configName)) :: IO (Maybe Config)
+  case cfg of
+    Nothing -> putStrLn ("Config for " <> dbDir <> " cannot be read")
+            >> return Nothing
+    Just Config{..} -> do
+      dbConnection <- HaSQL.acquire (BSC.pack configConnection)
+      case dbConnection of
+        Left _ -> putStrLn ("Connection string for " <> dbDir <> " directory does not provide connection to any database")
+               >> return Nothing
+        Right conn -> return . Just $ Settings
+          { dbConnection = conn
+          , channels = configChannels
+          , preambleText = configPreamble
+          , defaultFrequency = fromIntegral configFrequency
+          , defaultAssertion = readAssertion configAssertion
+          , telegramTokenVar = tokenVar
+          , databaseDirectory = dbDir
+          }

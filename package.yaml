@@ -20,6 +20,7 @@ description:    Please see the README on GitHub at <https://github.com/Pandora-M
 
 dependencies:
 - base >= 4.7
+- mtl
 - text
 - bytestring
 - dhall
@@ -27,9 +28,14 @@ dependencies:
 - hasql
 - optparse-applicative
 - hinotify
+- directory
+- filepath
 
 library:
   source-dirs: src
+  ghc-options:
+  - -Wall
+  - -Werror
 
 executables:
   dbmonitor:
@@ -39,5 +45,7 @@ executables:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    - -Wall
+    - -Werror
     dependencies:
     - db-monitor
