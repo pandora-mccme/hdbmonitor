@@ -1,6 +1,8 @@
 {-# LANGUAGE RecordWildCards #-}
 module Monitor.Entry where
 
+import Control.Concurrent
+import Control.Exception
 import Control.Monad.Reader
 
 import System.Directory
@@ -27,14 +29,14 @@ configWatch :: INotify -> String -> FilePath -> Event -> IO ()
 configWatch watcher dir tgvar _ = tryToEnter ConfigWatched watcher dir tgvar
 
 -- watches check changes.
-{--
+{-
   Expected behavior:
   On config changes -- drop all jobs, execute tryToEnter. On success inotify process is kept alive.
   On file changes -- actions for each type of event.
   Problem -- connection between job and filename, seems easy to handle.
   Also note behavior on file renames -- two successive alerts comes, one deletes the job, one starts the same with another id.
   DeleteSelf event must trigger suicide alert and immediate exit.
---}
+-}
 watchTower :: Settings -> Event -> IO ()
 watchTower = undefined
 
@@ -45,14 +47,14 @@ missingConfigCase watcher dir tgvar = do
 
 enter :: INotify -> FilePath -> [FilePath] -> Settings -> IO ()
 enter watcher dir checks cfg = do
-  {--
+  {-
     After successful start behavior changes: config now must be watched by process taking care about job queue,
     we don't want old settings to be applied so far.
     Hence on successful start we have to close watch descriptor. But we cannot pass it to it's own event handler.
     So we must restart whole inotify.
     First inotify process watches only config, second -- only queue.
     When config breaks, it turns into loop of starting process and dies as soon as queue is successfully restarted,
-  --}
+  -}
   killINotify watcher
   newWatcher <- initINotify
   _ <- addWatch newWatcher updateEventVariety (BSC.pack dir) (watchTower cfg)
@@ -74,11 +76,18 @@ tryToEnter isWatched watcher dir tgvar = do
         Nothing -> maybeAddConfigWatch watcher isWatched dir tgvar
         Just cfg -> enter watcher dir checks cfg
 
+finalizer :: FilePath -> Either SomeException () -> IO ()
+finalizer dir (Right ()) =
+  putStrLn $ "monitor for " <> dir <> " suddenly decided to be mortal with no exception or command received"
+finalizer dir (Left e) =
+  putStrLn $ "monitor for " <> dir <> " is dead by following reason: " <> show e
+
 trackDatabase :: FilePath -> String -> FilePath -> IO ()
-trackDatabase baseDir tgvar dbDir = do
-  let dir = baseDir </> dbDir
-  watcher <- initINotify
-  tryToEnter ConfigNonWatched watcher dir tgvar
+trackDatabase baseDir tgvar dbDir = void . flip forkFinally (finalizer dbDir) $
+  do
+    let dir = baseDir </> dbDir
+    watcher <- initINotify
+    tryToEnter ConfigNonWatched watcher dir tgvar
 
 runApp :: Options -> IO ()
 runApp Options{..} = do
