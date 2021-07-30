@@ -3,9 +3,9 @@ module Monitor.Entry where
 
 import Control.Concurrent
 import Control.Exception
-import Control.Monad.Reader
 
 import System.Directory
+import System.Exit
 import System.FilePath
 import System.INotify
 
@@ -52,7 +52,6 @@ jobAction watcher dir tgvar action cfg path = if notHidden path
   Expected behavior:
   On config changes -- drop all jobs, execute tryToEnter. On success inotify process is kept alive.
   On file changes -- actions for each type of event.
-  Problem -- connection between job and filename, seems easy to handle.
   Also note behavior on file renames -- two successive alerts comes, one deletes the job, one starts the same with another id.
   DeleteSelf event must trigger suicide alert and immediate exit.
 -}
@@ -127,6 +126,7 @@ trackDatabase baseDir tgvar dbDir = void . flip forkFinally (finalizer dbDir) $
     tryToEnter ConfigNonWatched watcher dir tgvar
 
 watchNewTrack :: FilePath -> String -> Event -> IO ()
+watchNewTrack _ _ DeletedSelf = die "Configuration directory deleted"
 watchNewTrack dir tgvar (MovedIn True path _) =
   trackDatabase dir tgvar $ BSC.unpack path
 watchNewTrack dir tgvar (Created True path) =
@@ -139,5 +139,5 @@ runApp Options{..} = do
   -- There can be any plain files on top level.
   databaseDirs <- filter notHidden <$> filterM doesDirectoryExist mDatabaseDirs
   mainWatcher <- initINotify
-  _ <- addWatch mainWatcher [MoveIn, Create] (BSC.pack optionsDir) (watchNewTrack optionsDir optionsToken)
+  _ <- addWatch mainWatcher [MoveIn, Create, DeleteSelf] (BSC.pack optionsDir) (watchNewTrack optionsDir optionsToken)
   mapM_ (trackDatabase optionsDir optionsToken) databaseDirs

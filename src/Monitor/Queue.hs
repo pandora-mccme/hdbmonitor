@@ -5,7 +5,6 @@ module Monitor.Queue where
 import Control.Concurrent
 import qualified Control.Concurrent.Lifted as Lifted
 import Control.Concurrent.STM.TVar
-import Control.Monad.Reader
 import Control.Monad.STM
 
 import System.Directory
@@ -22,6 +21,7 @@ import Monitor.Loader
 import Monitor.DB
 import Monitor.Telegram
 
+-- This is a hack. On connection error all thread must try to restart.
 touchConfig :: Monitor ()
 touchConfig = do
   dir <- asks databaseDirectory

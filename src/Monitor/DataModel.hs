@@ -3,6 +3,7 @@
 {-# LANGUAGE TypeFamilies #-}
 module Monitor.DataModel (
     module Monitor.DataModel
+  , module Control.Monad.Reader
   , Assertion(..)
   , readAssertion
   ) where

@@ -70,7 +70,7 @@ Incorrect assertion or syntactically wrong query will result in messages to main
 Telegram token is expected to be stored in environmental variable `TG_TOKEN`. You can pass name of the variable as an option. `--token <variable-name>` or `-T <variable-name>`.
 
 **Recommended usage:**
-Running -- `dbmonitor &`. It's highly recommended to put `@reboot dbmonitor` line in your `crontab`.
+Running -- `dbmonitor > monitor_log.txt &`. It's highly recommended to put `@reboot dbmonitor` line in your `crontab`.
 
 **Options Reference:**
 
