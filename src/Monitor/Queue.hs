@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 module Monitor.Queue where
 
@@ -8,17 +9,13 @@ import Control.Monad.Reader
 import Control.Monad.STM
 
 import qualified Data.HashMap.Strict as HM
-import Data.Text (Text)
---import qualified Data.Text as T
 import qualified Data.Text.IO as T
 
 import Monitor.DataModel
 import Monitor.Config
+import Monitor.Loader
 --import Monitor.DB
 import Monitor.Telegram
-
-parseJob :: Text -> Job
-parseJob = undefined
 
 periodicEvent :: Job -> Settings -> Monitor ()
 periodicEvent = undefined

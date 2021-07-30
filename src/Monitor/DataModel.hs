@@ -4,6 +4,7 @@
 module Monitor.DataModel (
     module Monitor.DataModel
   , Assertion(..)
+  , readAssertion
   ) where
 
 import Control.Monad.Base

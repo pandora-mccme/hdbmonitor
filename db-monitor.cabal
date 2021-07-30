@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: e76bbfb958a77d3006bca1a85460b75c25106bad84b1a5a57fe51bdcb26cdc37
+-- hash: 352d823a310c55ed7802396616fafc5b6a0433a4eb00b8696725ba3a217a84d0
 
 name:           db-monitor
 version:        0.1.0.0
@@ -30,6 +30,7 @@ library
       Monitor.DataModel
       Monitor.DB
       Monitor.Entry
+      Monitor.Loader
       Monitor.Options
       Monitor.Queue
       Monitor.Telegram
