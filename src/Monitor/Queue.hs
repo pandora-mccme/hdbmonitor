@@ -2,6 +2,7 @@
 module Monitor.Queue where
 
 import Control.Concurrent
+import qualified Control.Concurrent.Lifted as Lifted
 import Control.Concurrent.STM.TVar
 import Control.Monad.Reader
 import Control.Monad.STM
@@ -19,28 +20,28 @@ import Monitor.Telegram
 parseJob :: Text -> Job
 parseJob = undefined
 
-periodicEvent :: Job -> Settings -> IO ()
+periodicEvent :: Job -> Settings -> Monitor ()
 periodicEvent = undefined
 
-startJob :: FilePath -> ReaderT Settings IO ()
+startJob :: FilePath -> Monitor ()
 startJob path = do
   s@Settings{..} <- ask
   job <- liftIO $ parseJob <$> T.readFile path
-  thread <- liftIO . forkIO $ periodicEvent job s
+  thread <- Lifted.fork $ periodicEvent job s
   liftIO . atomically $ modifyTVar jobQueue (HM.insert path thread)
 
-removeJob :: FilePath -> ReaderT Settings IO ()
+removeJob :: FilePath -> Monitor ()
 removeJob path = do
   queueTVar <- asks jobQueue
   queue <- liftIO $ readTVarIO queueTVar
   liftIO $ killThread $ queue HM.! path
   liftIO . atomically $ modifyTVar queueTVar (HM.delete path)
 
-restartJob :: FilePath -> ReaderT Settings IO ()
+restartJob :: FilePath -> Monitor ()
 restartJob path = removeJob path >> startJob path
 
-destroyMonitor :: ReaderT Settings IO ()
+destroyMonitor :: Monitor ()
 destroyMonitor = do
   alertThreadDeath
-  thread <- liftIO myThreadId
-  liftIO $ killThread thread
+  thread <- Lifted.myThreadId
+  Lifted.killThread thread

@@ -21,8 +21,6 @@ import qualified Hasql.Connection as HaSQL
 import Dhall ( Generic, auto, inputFile, FromDhall, Natural )
 import Dhall.Deriving
 
-import Monitor.DataModel
-
 data Config = Config
   { configConnection :: String
   , configChannels :: [String]
@@ -34,6 +32,9 @@ data Config = Config
   deriving
     (FromDhall)
     via Codec (Dhall.Deriving.Field (SnakeCase <<< DropPrefix "config")) Config
+
+data Assertion = AssertNull | AssertNotNull | AssertTrue | AssertFalse | AssertZero
+  deriving (Eq, Show)
 
 data Settings = Settings
   { dbConnection :: HaSQL.Connection

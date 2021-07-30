@@ -42,7 +42,7 @@ jobAction :: INotify -> FilePath -> String -> JobAction -> Settings -> FilePath 
 jobAction watcher dir tgvar action cfg path = if notHidden path
   then if path == configName
     then tryToEnter ConfigNonWatched watcher dir tgvar
-    else flip runReaderT cfg $ case action of
+    else flip runReaderT cfg . getMonitor $ case action of
       Start -> startJob path
       Restart -> restartJob path
       Remove -> removeJob path
@@ -58,8 +58,8 @@ jobAction watcher dir tgvar action cfg path = if notHidden path
   DeleteSelf event must trigger suicide alert and immediate exit.
 -}
 watchTower :: INotify -> FilePath -> String -> Settings -> Event -> IO ()
-watchTower _ _ _ cfg DeletedSelf = runReaderT destroyMonitor cfg
-watchTower _ _ _ cfg (MovedSelf _) = runReaderT destroyMonitor cfg
+watchTower _ _ _ cfg DeletedSelf = runReaderT (getMonitor destroyMonitor) cfg
+watchTower _ _ _ cfg (MovedSelf _) = runReaderT (getMonitor destroyMonitor) cfg
 watchTower watcher dir tgvar cfg (Modified False (Just path)) =
   jobAction watcher dir tgvar Restart cfg $ BSC.unpack path
 watchTower watcher dir tgvar cfg (Deleted False path) =
@@ -96,7 +96,7 @@ enter watcher dir checks tgvar cfg = do
   _ <- addWatch newWatcher updateEventVariety (BSC.pack dir) (watchTower newWatcher dir tgvar cfg)
   -- In directories there may be any content.
   checkFiles <- filter notHidden <$> filterM doesFileExist checks
-  runReaderT (mapM_ startJob checkFiles) cfg
+  runReaderT (getMonitor $ mapM_ startJob checkFiles) cfg
 
 maybeAddConfigWatch :: INotify -> ConfigWatchFlag -> FilePath -> String -> IO ()
 maybeAddConfigWatch watcher isWatched dir tgvar = case isWatched of

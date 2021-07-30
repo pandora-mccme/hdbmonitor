@@ -20,6 +20,9 @@ description:    Please see the README on GitHub at <https://github.com/Pandora-M
 
 dependencies:
 - base >= 4.7
+- lifted-base
+- transformers-base
+- monad-control
 - mtl
 - stm
 - bytestring

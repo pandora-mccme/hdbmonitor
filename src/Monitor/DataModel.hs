@@ -1,11 +1,28 @@
-module Monitor.DataModel where
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies #-}
+module Monitor.DataModel (
+    module Monitor.DataModel
+  , Assertion(..)
+  ) where
+
+import Control.Monad.Base
+import Control.Monad.Reader
+import Control.Monad.Trans.Control
 
 import Data.ByteString (ByteString)
 
-data ConfigWatchFlag = ConfigWatched | ConfigNonWatched
-  deriving (Eq, Show)
+import Monitor.Config
 
-data Assertion = AssertNull | AssertNotNull | AssertTrue | AssertFalse | AssertZero
+newtype Monitor a = Monitor {getMonitor :: ReaderT Settings IO a} deriving
+  (Functor, Applicative, Monad, MonadIO, MonadReader Settings, MonadBase IO)
+
+instance MonadBaseControl IO Monitor where
+  type StM Monitor a = a
+  liftBaseWith f = Monitor $ liftBaseWith $ \q -> f (q . getMonitor)
+  restoreM = Monitor . restoreM
+
+data ConfigWatchFlag = ConfigWatched | ConfigNonWatched
   deriving (Eq, Show)
 
 data JobAction = Start | Restart | Remove
