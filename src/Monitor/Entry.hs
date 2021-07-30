@@ -41,7 +41,8 @@ configWatch _ _ _ _ = pure ()
 jobAction :: INotify -> FilePath -> String -> JobAction -> Settings -> FilePath -> IO ()
 jobAction watcher dir tgvar action cfg path = if notHidden path
   then if path == configName
-    then tryToEnter ConfigNonWatched watcher dir tgvar
+    then (flip runReaderT cfg . getMonitor $ removeAllJobs)
+      >> tryToEnter ConfigNonWatched watcher dir tgvar
     else flip runReaderT cfg . getMonitor $ case action of
       Start -> startJob path
       Restart -> restartJob path

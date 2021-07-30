@@ -31,14 +31,22 @@ removeJob :: FilePath -> Monitor ()
 removeJob path = do
   queueTVar <- asks jobQueue
   queue <- liftIO $ readTVarIO queueTVar
-  liftIO $ killThread $ queue HM.! path
+  liftIO . killThread $ queue HM.! path
   liftIO . atomically $ modifyTVar queueTVar (HM.delete path)
+
+removeAllJobs :: Monitor ()
+removeAllJobs = do
+  queueTVar <- asks jobQueue
+  queue <- liftIO $ readTVarIO queueTVar
+  mapM_ (liftIO . killThread) $ HM.elems queue
+  liftIO . atomically $ modifyTVar queueTVar (\_ -> HM.empty)
 
 restartJob :: FilePath -> Monitor ()
 restartJob path = removeJob path >> startJob path
 
 destroyMonitor :: Monitor ()
 destroyMonitor = do
+  removeAllJobs
   alertThreadDeath
   thread <- Lifted.myThreadId
   Lifted.killThread thread
