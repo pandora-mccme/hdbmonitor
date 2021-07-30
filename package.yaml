@@ -27,6 +27,7 @@ dependencies:
 - stm
 - bytestring
 - text
+- time
 - unordered-containers
 - dhall
 - telegram-bot-simple

@@ -17,9 +17,6 @@ import Monitor.Config
 import Monitor.Queue
 import Monitor.DataModel
 
-configName :: FilePath
-configName = "conf.dhall"
-
 updateEventVariety :: [EventVariety]
 updateEventVariety = [Modify, MoveIn, MoveOut, Create, Delete, DeleteSelf, MoveSelf]
 
@@ -38,6 +35,7 @@ configWatch watcher dir tgvar (Created False path) =
   changeConfigAction watcher dir tgvar $ BSC.unpack path
 configWatch _ _ _ _ = pure ()
 
+-- FIXME: triad of parameters may be better to also be wrapped in Reader.
 jobAction :: INotify -> FilePath -> String -> JobAction -> Settings -> FilePath -> IO ()
 jobAction watcher dir tgvar action cfg path = if notHidden path
   then if path == configName

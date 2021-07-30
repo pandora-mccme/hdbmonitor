@@ -1,4 +1,6 @@
 module Monitor.DB where
 
-f :: ()
-f = ()
+import Monitor.DataModel
+
+runSQL :: PureJob -> Monitor JobFeedback
+runSQL = undefined

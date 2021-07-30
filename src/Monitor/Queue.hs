@@ -8,24 +8,59 @@ import Control.Concurrent.STM.TVar
 import Control.Monad.Reader
 import Control.Monad.STM
 
+import System.Directory
+import System.FilePath
+
 import qualified Data.HashMap.Strict as HM
+import Data.Maybe
 import qualified Data.Text.IO as T
+import Data.Time
 
 import Monitor.DataModel
 import Monitor.Config
 import Monitor.Loader
---import Monitor.DB
+import Monitor.DB
 import Monitor.Telegram
 
-periodicEvent :: Job -> Settings -> Monitor ()
-periodicEvent = undefined
+touchConfig :: Monitor ()
+touchConfig = do
+  dir <- asks databaseDirectory
+  time <- liftIO getCurrentTime
+  liftIO $ setModificationTime (dir </> configName) time
+
+processQueryResult :: FilePath -> PureJob -> JobFeedback -> Monitor ()
+processQueryResult _path _ (ConnectionError err) =
+  alertConnectionError err >> touchConfig
+processQueryResult path PureJob{..} (QueryError err) =
+  alertQueryError path err pureJobSQL
+processQueryResult path job (AssertionResult value) =
+  if value
+    then pure ()
+    else alertFailedAssertion path job
+
+purify :: Job -> Assertion -> FilePath -> PureJob
+purify Job{..} assertion path = PureJob {
+    pureJobDescription = fromMaybe ("Job at " <> path) jobDescription
+  , pureJobAssertion = fromMaybe assertion jobAssertion
+  , pureJobSQL = jobSQL
+  }
+
+periodicEvent :: Job -> FilePath -> Monitor ()
+periodicEvent job@Job{..} path = forever $ do
+  defFreq <- asks defaultFrequency
+  defAssert <- asks defaultAssertion
+  let pureJob = purify job defAssert path
+      delay = 60 * 10^((6)::Int) * (fromMaybe defFreq jobFrequency)
+  queryResult <- runSQL pureJob
+  processQueryResult path pureJob queryResult
+  liftIO $ threadDelay delay
 
 startJob :: FilePath -> Monitor ()
 startJob path = do
-  s@Settings{..} <- ask
+  queue <- asks jobQueue
   job <- liftIO $ parseJob <$> T.readFile path
-  thread <- Lifted.fork $ periodicEvent job s
-  liftIO . atomically $ modifyTVar jobQueue (HM.insert path thread)
+  thread <- Lifted.fork $ periodicEvent job path
+  liftIO . atomically $ modifyTVar queue (HM.insert path thread)
 
 removeJob :: FilePath -> Monitor ()
 removeJob path = do

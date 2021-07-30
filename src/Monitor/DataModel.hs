@@ -23,10 +23,18 @@ instance MonadBaseControl IO Monitor where
   liftBaseWith f = Monitor $ liftBaseWith $ \q -> f (q . getMonitor)
   restoreM = Monitor . restoreM
 
+configName :: FilePath
+configName = "conf.dhall"
+
 data ConfigWatchFlag = ConfigWatched | ConfigNonWatched
   deriving (Eq, Show)
 
 data JobAction = Start | Restart | Remove
+  deriving (Eq, Show)
+
+data JobFeedback = ConnectionError String
+                 | QueryError String
+                 | AssertionResult Bool
   deriving (Eq, Show)
 
 data Job = Job
@@ -34,4 +42,10 @@ data Job = Job
   , jobFrequency :: Maybe Int
   , jobAssertion :: Maybe Assertion
   , jobSQL :: ByteString
+  } deriving (Eq, Show)
+
+data PureJob = PureJob
+  { pureJobDescription :: String
+  , pureJobAssertion :: Assertion
+  , pureJobSQL :: ByteString
   } deriving (Eq, Show)

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 352d823a310c55ed7802396616fafc5b6a0433a4eb00b8696725ba3a217a84d0
+-- hash: e01b205361cd9e0fe36cc4915d579d35afb78167c479f26d67d8bed490e3cfe2
 
 name:           db-monitor
 version:        0.1.0.0
@@ -54,6 +54,7 @@ library
     , stm
     , telegram-bot-simple
     , text
+    , time
     , transformers-base
     , unordered-containers
   default-language: Haskell2010
@@ -81,6 +82,7 @@ executable dbmonitor
     , stm
     , telegram-bot-simple
     , text
+    , time
     , transformers-base
     , unordered-containers
   default-language: Haskell2010
