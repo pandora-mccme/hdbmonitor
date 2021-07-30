@@ -21,12 +21,31 @@ configName :: FilePath
 configName = "conf.dhall"
 
 updateEventVariety :: [EventVariety]
-updateEventVariety = [Modify, Move, Create, Delete, DeleteSelf]
+updateEventVariety = [Modify, MoveIn, MoveOut, Create, Delete, DeleteSelf]
+
+changeConfigAction :: INotify -> String -> FilePath -> FilePath -> IO ()
+changeConfigAction watcher dir tgvar path = if path == configName
+  then tryToEnter ConfigWatched watcher dir tgvar
+  else pure ()
 
 -- watches only config changes.
 configWatch :: INotify -> String -> FilePath -> Event -> IO ()
 -- Looks like we do not need any data about event.
-configWatch watcher dir tgvar _ = tryToEnter ConfigWatched watcher dir tgvar
+configWatch watcher dir tgvar (Modified False (Just path)) =
+  changeConfigAction watcher dir tgvar $ BSC.unpack path
+configWatch watcher dir tgvar (MovedIn False path _) =
+  changeConfigAction watcher dir tgvar $ BSC.unpack path
+configWatch watcher dir tgvar (Created False path) =
+  changeConfigAction watcher dir tgvar $ BSC.unpack path
+configWatch _ _ _ _ = pure ()
+
+jobAction :: JobAction -> FilePath -> ReaderT Settings IO ()
+jobAction action path = if notHidden path
+  then case action of
+    Start -> startJob path
+    Restart -> restartJob path
+    Remove -> removeJob path
+  else pure ()
 
 -- watches check changes.
 {-
@@ -38,12 +57,24 @@ configWatch watcher dir tgvar _ = tryToEnter ConfigWatched watcher dir tgvar
   DeleteSelf event must trigger suicide alert and immediate exit.
 -}
 watchTower :: Settings -> Event -> IO ()
-watchTower = undefined
+watchTower cfg DeletedSelf = runReaderT destroyEvent cfg
+watchTower cfg (Modified False (Just path)) = runReaderT (jobAction Restart $ BSC.unpack path) cfg
+watchTower cfg (Deleted False path) = runReaderT (jobAction Remove $ BSC.unpack path) cfg
+watchTower cfg (MovedOut False path _) = runReaderT (jobAction Remove $ BSC.unpack path) cfg
+watchTower cfg (MovedIn False path _) = runReaderT (jobAction Start $ BSC.unpack path) cfg
+watchTower cfg (Created False path) = runReaderT (jobAction Start $ BSC.unpack path) cfg
+-- Other events must not be watched, warning bypass
+watchTower _ _ = pure ()
+
 
 missingConfigCase :: INotify -> FilePath -> String -> IO ()
 missingConfigCase watcher dir tgvar = do
   putStrLn $ "Configuration file is missing or invalid in " <> dir <> ", ignoring. You do not need to restart after config fix."
-  void $ addWatch watcher [MoveIn, Create, Modify] (BSC.pack $ dir </> configName) (configWatch watcher tgvar dir)
+  void $ addWatch watcher [MoveIn, Create, Modify] (BSC.pack dir) (configWatch watcher tgvar dir)
+
+notHidden :: FilePath -> Bool
+notHidden ('.':_) = False
+notHidden _ = True
 
 enter :: INotify -> FilePath -> [FilePath] -> Settings -> IO ()
 enter watcher dir checks cfg = do
@@ -58,7 +89,9 @@ enter watcher dir checks cfg = do
   killINotify watcher
   newWatcher <- initINotify
   _ <- addWatch newWatcher updateEventVariety (BSC.pack dir) (watchTower cfg)
-  runReaderT (buildQueue checks) cfg
+  -- In directories there may be any content.
+  checkFiles <- filter notHidden <$> filterM doesFileExist checks
+  runReaderT (buildQueue checkFiles) cfg
 
 maybeAddConfigWatch :: INotify -> ConfigWatchFlag -> FilePath -> String -> IO ()
 maybeAddConfigWatch watcher isWatched dir tgvar = case isWatched of

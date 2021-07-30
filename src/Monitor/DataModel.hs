@@ -5,3 +5,6 @@ data ConfigWatchFlag = ConfigWatched | ConfigNonWatched
 
 data Assertion = AssertNull | AssertNotNull | AssertTrue | AssertFalse | AssertZero
   deriving (Eq, Show)
+
+data JobAction = Start | Restart | Remove
+  deriving (Eq, Show)
