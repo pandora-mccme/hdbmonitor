@@ -30,7 +30,6 @@ changeConfigAction watcher dir tgvar path = if path == configName
 
 -- watches only config changes.
 configWatch :: INotify -> String -> FilePath -> Event -> IO ()
--- Looks like we do not need any data about event.
 configWatch watcher dir tgvar (Modified False (Just path)) =
   changeConfigAction watcher dir tgvar $ BSC.unpack path
 configWatch watcher dir tgvar (MovedIn False path _) =
@@ -39,12 +38,15 @@ configWatch watcher dir tgvar (Created False path) =
   changeConfigAction watcher dir tgvar $ BSC.unpack path
 configWatch _ _ _ _ = pure ()
 
-jobAction :: JobAction -> FilePath -> ReaderT Settings IO ()
-jobAction action path = if notHidden path
-  then case action of
-    Start -> startJob path
-    Restart -> restartJob path
-    Remove -> removeJob path
+jobAction :: INotify -> FilePath -> String -> JobAction -> Settings -> FilePath -> IO ()
+jobAction watcher dir tgvar action cfg path = if notHidden path
+  then if path == configName
+    then runReaderT destroyQueue cfg
+      >> tryToEnter ConfigNonWatched watcher dir tgvar
+    else flip runReaderT cfg $ case action of
+      Start -> startJob path
+      Restart -> restartJob path
+      Remove -> removeJob path
   else pure ()
 
 -- watches check changes.
@@ -56,16 +58,19 @@ jobAction action path = if notHidden path
   Also note behavior on file renames -- two successive alerts comes, one deletes the job, one starts the same with another id.
   DeleteSelf event must trigger suicide alert and immediate exit.
 -}
-watchTower :: Settings -> Event -> IO ()
-watchTower cfg DeletedSelf = runReaderT destroyEvent cfg
-watchTower cfg (Modified False (Just path)) = runReaderT (jobAction Restart $ BSC.unpack path) cfg
-watchTower cfg (Deleted False path) = runReaderT (jobAction Remove $ BSC.unpack path) cfg
-watchTower cfg (MovedOut False path _) = runReaderT (jobAction Remove $ BSC.unpack path) cfg
-watchTower cfg (MovedIn False path _) = runReaderT (jobAction Start $ BSC.unpack path) cfg
-watchTower cfg (Created False path) = runReaderT (jobAction Start $ BSC.unpack path) cfg
--- Other events must not be watched, warning bypass
-watchTower _ _ = pure ()
-
+watchTower :: INotify -> FilePath -> String -> Settings -> Event -> IO ()
+watchTower _ _ _ cfg DeletedSelf = runReaderT destroyProcess cfg
+watchTower watcher dir tgvar cfg (Modified False (Just path)) =
+  jobAction watcher dir tgvar Restart cfg $ BSC.unpack path
+watchTower watcher dir tgvar cfg (Deleted False path) =
+  jobAction watcher dir tgvar Remove cfg $ BSC.unpack path
+watchTower watcher dir tgvar cfg (MovedOut False path _) =
+  jobAction watcher dir tgvar Remove cfg $ BSC.unpack path
+watchTower watcher dir tgvar cfg (MovedIn False path _) =
+  jobAction watcher dir tgvar Start cfg $ BSC.unpack path
+watchTower watcher dir tgvar cfg (Created False path) =
+  jobAction watcher dir tgvar Start cfg $ BSC.unpack path
+watchTower _ _ _ _ _ = pure ()
 
 missingConfigCase :: INotify -> FilePath -> String -> IO ()
 missingConfigCase watcher dir tgvar = do
@@ -76,8 +81,8 @@ notHidden :: FilePath -> Bool
 notHidden ('.':_) = False
 notHidden _ = True
 
-enter :: INotify -> FilePath -> [FilePath] -> Settings -> IO ()
-enter watcher dir checks cfg = do
+enter :: INotify -> FilePath -> [FilePath] -> String -> Settings -> IO ()
+enter watcher dir checks tgvar cfg = do
   {-
     After successful start behavior changes: config now must be watched by process taking care about job queue,
     we don't want old settings to be applied so far.
@@ -88,10 +93,10 @@ enter watcher dir checks cfg = do
   -}
   killINotify watcher
   newWatcher <- initINotify
-  _ <- addWatch newWatcher updateEventVariety (BSC.pack dir) (watchTower cfg)
+  _ <- addWatch newWatcher updateEventVariety (BSC.pack dir) (watchTower newWatcher dir tgvar cfg)
   -- In directories there may be any content.
   checkFiles <- filter notHidden <$> filterM doesFileExist checks
-  runReaderT (buildQueue checkFiles) cfg
+  runReaderT (mapM_ startJob checkFiles) cfg
 
 maybeAddConfigWatch :: INotify -> ConfigWatchFlag -> FilePath -> String -> IO ()
 maybeAddConfigWatch watcher isWatched dir tgvar = case isWatched of
@@ -107,7 +112,7 @@ tryToEnter isWatched watcher dir tgvar = do
       mSettings <- readSettings dir tgvar configPath
       case mSettings of
         Nothing -> maybeAddConfigWatch watcher isWatched dir tgvar
-        Just cfg -> enter watcher dir checks cfg
+        Just cfg -> enter watcher dir checks tgvar cfg
 
 finalizer :: FilePath -> Either SomeException () -> IO ()
 finalizer dir (Right ()) =

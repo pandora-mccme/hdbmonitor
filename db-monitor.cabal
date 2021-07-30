@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 858d0e91b2d40e3c55fcf7678454657cedaba7c739a444555cf9ed34b7ab66b9
+-- hash: 799e98c68fb8922d5a656d9fed300585a088b9aee4b8a0006bf11c67a0a57cfc
 
 name:           db-monitor
 version:        0.1.0.0
@@ -48,8 +48,9 @@ library
     , hinotify
     , mtl
     , optparse-applicative
+    , stm
     , telegram-bot-simple
-    , text
+    , unordered-containers
   default-language: Haskell2010
 
 executable dbmonitor
@@ -70,6 +71,7 @@ executable dbmonitor
     , hinotify
     , mtl
     , optparse-applicative
+    , stm
     , telegram-bot-simple
-    , text
+    , unordered-containers
   default-language: Haskell2010

@@ -4,14 +4,11 @@ import Control.Monad.Reader
 
 import Monitor.Config
 
-buildQueue :: [FilePath] -> ReaderT Settings IO ()
-buildQueue = undefined
+destroyQueue :: ReaderT Settings IO ()
+destroyQueue = undefined
 
-stopAll :: ReaderT Settings IO ()
-stopAll = undefined
-
-destroyEvent :: ReaderT Settings IO ()
-destroyEvent = undefined
+destroyProcess :: ReaderT Settings IO ()
+destroyProcess = undefined
 
 restartJob :: FilePath -> ReaderT Settings IO ()
 restartJob = undefined

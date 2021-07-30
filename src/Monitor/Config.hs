@@ -6,11 +6,14 @@
 {-# LANGUAGE DataKinds #-}
 module Monitor.Config where
 
+import Control.Concurrent.STM.TVar
 import Control.Exception
 
 import System.FilePath
 
 import qualified Data.ByteString.Char8 as BSC
+import Data.HashMap.Strict (HashMap)
+import qualified Data.HashMap.Strict as HM
 
 import qualified Hasql.Connection as HaSQL
 
@@ -39,6 +42,7 @@ data Settings = Settings
   , defaultAssertion :: Assertion
   , telegramTokenVar :: String
   , databaseDirectory :: FilePath
+  , jobQueue :: TVar (HashMap FilePath Job)
   }
 
 readAssertion :: String -> Assertion
@@ -61,12 +65,15 @@ readSettings dbDir tokenVar configName = do
       case dbConnection of
         Left _ -> putStrLn ("Connection string for " <> dbDir <> " directory does not provide connection to any database")
                >> return Nothing
-        Right conn -> return . Just $ Settings
-          { dbConnection = conn
-          , channels = configChannels
-          , preambleText = configPreamble
-          , defaultFrequency = fromIntegral configFrequency
-          , defaultAssertion = readAssertion configAssertion
-          , telegramTokenVar = tokenVar
-          , databaseDirectory = dbDir
-          }
+        Right conn -> do
+          queue <- newTVarIO HM.empty
+          return . Just $ Settings
+            { dbConnection = conn
+            , channels = configChannels
+            , preambleText = configPreamble
+            , defaultFrequency = fromIntegral configFrequency
+            , defaultAssertion = readAssertion configAssertion
+            , telegramTokenVar = tokenVar
+            , databaseDirectory = dbDir
+            , jobQueue = queue
+            }

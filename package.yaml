@@ -21,8 +21,9 @@ description:    Please see the README on GitHub at <https://github.com/Pandora-M
 dependencies:
 - base >= 4.7
 - mtl
-- text
+- stm
 - bytestring
+- unordered-containers
 - dhall
 - telegram-bot-simple
 - hasql

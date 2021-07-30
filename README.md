@@ -54,11 +54,12 @@ or
 ```
 -- frequency = 10
 -- assertion = zero
+-- description = Some text
 SELECT count(id) FROM table1 WHERE obligatory_field IS NULL;
 ```
 
 If `assertion` or `frequency` comment is omitted, default value applies.
-These comments must satisfy the following regular expression: `^--\s*[:field:]\s*=\s*[:value:]\s*$`.
+These comments must satisfy the following regular expression: `^--\s*[:field:]\s*=\s*[:value:]\s*$`. `description` is optional and will appear in alerts.
 
 Assertions can be made on SQL side or on Haskell side and it's more native to do them on SQL side, so `assertion` field may have only one of these values -- `null`, `not null`, `true`, `false`, `zero`.
 Frequency is expected to be positive integer. I.e any value less than 1 will be treated as 1, fractional numbers will be considered as parse errors.
