@@ -1,7 +1,5 @@
 module Monitor.DataModel where
 
-import Control.Concurrent (ThreadId)
-
 import Data.ByteString (ByteString)
 
 data ConfigWatchFlag = ConfigWatched | ConfigNonWatched
@@ -14,8 +12,7 @@ data JobAction = Start | Restart | Remove
   deriving (Eq, Show)
 
 data Job = Job
-  { jobId :: ThreadId
-  , jobDescription :: Maybe String
+  { jobDescription :: Maybe String
   , jobFrequency :: Maybe Int
   , jobAssertion :: Maybe Assertion
   , jobSQL :: ByteString

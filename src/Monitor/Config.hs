@@ -6,6 +6,7 @@
 {-# LANGUAGE DataKinds #-}
 module Monitor.Config where
 
+import Control.Concurrent (ThreadId)
 import Control.Concurrent.STM.TVar
 import Control.Exception
 
@@ -42,7 +43,7 @@ data Settings = Settings
   , defaultAssertion :: Assertion
   , telegramTokenVar :: String
   , databaseDirectory :: FilePath
-  , jobQueue :: TVar (HashMap FilePath Job)
+  , jobQueue :: TVar (HashMap FilePath ThreadId)
   }
 
 readAssertion :: String -> Assertion

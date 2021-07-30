@@ -1,4 +1,8 @@
 module Monitor.Telegram where
 
-f :: ()
-f = ()
+import Control.Monad.Reader
+
+import Monitor.Config
+
+alertThreadDeath :: ReaderT Settings IO ()
+alertThreadDeath = undefined

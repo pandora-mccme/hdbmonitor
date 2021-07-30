@@ -21,7 +21,7 @@ configName :: FilePath
 configName = "conf.dhall"
 
 updateEventVariety :: [EventVariety]
-updateEventVariety = [Modify, MoveIn, MoveOut, Create, Delete, DeleteSelf]
+updateEventVariety = [Modify, MoveIn, MoveOut, Create, Delete, DeleteSelf, MoveSelf]
 
 changeConfigAction :: INotify -> String -> FilePath -> FilePath -> IO ()
 changeConfigAction watcher dir tgvar path = if path == configName
@@ -29,7 +29,7 @@ changeConfigAction watcher dir tgvar path = if path == configName
   else pure ()
 
 -- watches only config changes.
-configWatch :: INotify -> String -> FilePath -> Event -> IO ()
+configWatch :: INotify -> FilePath -> String -> Event -> IO ()
 configWatch watcher dir tgvar (Modified False (Just path)) =
   changeConfigAction watcher dir tgvar $ BSC.unpack path
 configWatch watcher dir tgvar (MovedIn False path _) =
@@ -41,8 +41,7 @@ configWatch _ _ _ _ = pure ()
 jobAction :: INotify -> FilePath -> String -> JobAction -> Settings -> FilePath -> IO ()
 jobAction watcher dir tgvar action cfg path = if notHidden path
   then if path == configName
-    then runReaderT destroyQueue cfg
-      >> tryToEnter ConfigNonWatched watcher dir tgvar
+    then tryToEnter ConfigNonWatched watcher dir tgvar
     else flip runReaderT cfg $ case action of
       Start -> startJob path
       Restart -> restartJob path
@@ -59,7 +58,8 @@ jobAction watcher dir tgvar action cfg path = if notHidden path
   DeleteSelf event must trigger suicide alert and immediate exit.
 -}
 watchTower :: INotify -> FilePath -> String -> Settings -> Event -> IO ()
-watchTower _ _ _ cfg DeletedSelf = runReaderT destroyProcess cfg
+watchTower _ _ _ cfg DeletedSelf = runReaderT destroyMonitor cfg
+watchTower _ _ _ cfg (MovedSelf _) = runReaderT destroyMonitor cfg
 watchTower watcher dir tgvar cfg (Modified False (Just path)) =
   jobAction watcher dir tgvar Restart cfg $ BSC.unpack path
 watchTower watcher dir tgvar cfg (Deleted False path) =
@@ -75,7 +75,7 @@ watchTower _ _ _ _ _ = pure ()
 missingConfigCase :: INotify -> FilePath -> String -> IO ()
 missingConfigCase watcher dir tgvar = do
   putStrLn $ "Configuration file is missing or invalid in " <> dir <> ", ignoring. You do not need to restart after config fix."
-  void $ addWatch watcher [MoveIn, Create, Modify] (BSC.pack dir) (configWatch watcher tgvar dir)
+  void $ addWatch watcher [MoveIn, Create, Modify] (BSC.pack dir) (configWatch watcher dir tgvar)
 
 notHidden :: FilePath -> Bool
 notHidden ('.':_) = False
@@ -127,7 +127,18 @@ trackDatabase baseDir tgvar dbDir = void . flip forkFinally (finalizer dbDir) $
     watcher <- initINotify
     tryToEnter ConfigNonWatched watcher dir tgvar
 
+watchNewTrack :: FilePath -> String -> Event -> IO ()
+watchNewTrack dir tgvar (MovedIn True path _) =
+  trackDatabase dir tgvar $ BSC.unpack path
+watchNewTrack dir tgvar (Created True path) =
+  trackDatabase dir tgvar $ BSC.unpack path
+watchNewTrack _ _ _ = pure ()
+
 runApp :: Options -> IO ()
 runApp Options{..} = do
-  databaseDirs <- listDirectory optionsDir
+  mDatabaseDirs <- listDirectory optionsDir
+  -- There can be any plain files on top level.
+  databaseDirs <- filter notHidden <$> filterM doesDirectoryExist mDatabaseDirs
+  mainWatcher <- initINotify
+  _ <- addWatch mainWatcher [MoveIn, Create] (BSC.pack optionsDir) (watchNewTrack optionsDir optionsToken)
   mapM_ (trackDatabase optionsDir optionsToken) databaseDirs
