@@ -2,8 +2,11 @@
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE DataKinds #-}
 module Monitor.Config where
+
+import Control.Exception
 
 import System.FilePath
 
@@ -48,11 +51,12 @@ readAssertion _ = AssertNotNull
 
 readSettings :: FilePath -> String -> FilePath -> IO (Maybe Settings)
 readSettings dbDir tokenVar configName = do
-  cfg <- (inputFile auto (dbDir </> configName)) :: IO (Maybe Config)
+  cfg <- try $ inputFile auto (dbDir </> configName)
   case cfg of
-    Nothing -> putStrLn ("Config for " <> dbDir <> " cannot be read")
+    Left ex -> putStrLn ("Config for " <> dbDir <> " cannot be read.")
+            >> putStrLn ("Exception: " <> show @SomeException ex)
             >> return Nothing
-    Just Config{..} -> do
+    Right Config{..} -> do
       dbConnection <- HaSQL.acquire (BSC.pack configConnection)
       case dbConnection of
         Left _ -> putStrLn ("Connection string for " <> dbDir <> " directory does not provide connection to any database")
