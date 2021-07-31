@@ -16,7 +16,6 @@ import qualified Data.Text.IO as T
 import Data.Time
 
 import Monitor.DataModel
-import Monitor.Config
 import Monitor.Loader
 import Monitor.DB
 import Monitor.Telegram

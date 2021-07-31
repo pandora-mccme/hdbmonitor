@@ -5,6 +5,7 @@ module Monitor.DataModel (
     module Monitor.DataModel
   , module Control.Monad.Reader
   , Assertion(..)
+  , Settings(..)
   , readAssertion
   ) where
 

@@ -9,7 +9,6 @@ import qualified Hasql.Decoders as D
 import qualified Hasql.Encoders as E
 
 import Monitor.DataModel
-import Monitor.Config
 
 decodeAssertNull :: D.Result Bool
 decodeAssertNull = test <$> D.rowMaybe (D.column (D.nullable (D.custom (\_ _ -> Right ()))))
