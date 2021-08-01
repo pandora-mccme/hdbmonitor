@@ -40,9 +40,9 @@ jobAction :: INotify -> FilePath -> String -> JobAction -> Settings -> FilePath 
 jobAction watcher dir tgvar action cfg path = if notHidden path
   then if path == configName
     then (flip runReaderT cfg . getMonitor $ destroyQueue)
+      >> logMessage ("Monitor at " <> dir <> " is stopped due to configuration change. All jobs are removed, monitor will be restarted.")
       >> tryToEnter ConfigNonWatched watcher dir tgvar
-    else do
-      liftIO (print action)
+    else
       flip runReaderT cfg . getMonitor $ case action of
         Start -> startJob (dir </> path)
         Restart -> restartJob (dir </> path)
@@ -58,8 +58,10 @@ jobAction watcher dir tgvar action cfg path = if notHidden path
   DeleteSelf event must trigger suicide alert and immediate exit.
 -}
 watchTower :: INotify -> FilePath -> String -> Settings -> Event -> IO ()
-watchTower watcher _ _ cfg DeletedSelf = runReaderT (getMonitor $ destroyMonitor watcher) cfg
-watchTower watcher _ _ cfg (MovedSelf _) = runReaderT (getMonitor $ destroyMonitor watcher) cfg
+watchTower watcher dir _ cfg DeletedSelf = logMessage ("Monitor at " <> dir <> " is stopped due to directory deletion." )
+                                        >> runReaderT (getMonitor $ destroyMonitor watcher) cfg
+watchTower watcher dir _ cfg (MovedSelf _) = logMessage ("Monitor at " <> dir <> " is stopped due to directory move." )
+                                          >> runReaderT (getMonitor $ destroyMonitor watcher) cfg
 watchTower watcher dir tgvar cfg (Modified False (Just path)) =
   jobAction watcher dir tgvar Restart cfg (BSC.unpack path)
 watchTower watcher dir tgvar cfg (Deleted False path) =
@@ -86,6 +88,7 @@ enter watcher dir checks tgvar cfg = do
     First inotify process watches only config, second -- only queue.
     When config breaks, it turns into loop of starting process and dies as soon as queue is successfully restarted,
   -}
+  logMessage $ "Successfully read configuration at " <> dir
   killINotify watcher
   newWatcher@(INotify _ _ _ _ eventsThread) <- initINotify
   void $ addWatch newWatcher updateEventVariety (BSC.pack dir) (void . async . watchTower newWatcher dir tgvar cfg)
@@ -117,6 +120,7 @@ tryToEnter isWatched watcher dir tgvar = do
 
 trackDatabase :: String -> FilePath -> IO ()
 trackDatabase tgvar dbDir = do
+  logMessage $ "Started tracking directory " <> dbDir <> " in separate thread."
   watcher <- initINotify
   tryToEnter ConfigNonWatched watcher dbDir tgvar
 
@@ -130,6 +134,7 @@ watchNewTrack _ _ _ = pure ()
 
 runApp :: Options -> IO ()
 runApp Options{..} = do
+  logMessage "dbmonitor process started."
   mDatabaseDirs <- listDirectory optionsDir
   -- There can be any plain files on top level.
   databaseDirs <- filterM doesDirectoryExist (map (optionsDir </>) . filter notHidden $ mDatabaseDirs)
@@ -137,7 +142,4 @@ runApp Options{..} = do
   void $ addWatch mainWatcher [MoveIn, Create, DeleteSelf] (BSC.pack optionsDir)
           (void . async . watchNewTrack optionsDir optionsToken)
   mapConcurrently_ (trackDatabase optionsToken) databaseDirs
-  -- Main thread cannot terminate if watch can create new threads, so parent process must wait for spawned inotify to terminate.
-  -- It doesn't know it's pid and must take care about processes spawned in threads which can be killed. So there is a loop.
-  -- The only way to terminate a program here -- catch exception if there is no child processes.
   wait eventsThread

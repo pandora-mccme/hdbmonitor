@@ -67,6 +67,7 @@ startJob path = do
   job <- liftIO $ parseJob <$> T.readFile path
   (thread, waitHandle) <- forkWaitable (periodicEvent job path)
   liftIO . atomically $ modifyTVar queue (HM.insert path thread)
+  logMessage ("Job " <> path <> " is started.")
   void $ liftIO $ takeMVar waitHandle
 
 removeJob :: FilePath -> Monitor ()
@@ -75,9 +76,14 @@ removeJob path = do
   queue <- liftIO $ readTVarIO queueTVar
   liftIO . killThread $ queue HM.! path
   liftIO . atomically $ modifyTVar queueTVar (HM.delete path)
+  logMessage ("Job " <> path <> " is removed")
 
 restartJob :: FilePath -> Monitor ()
-restartJob path = removeJob path >> startJob path
+restartJob path = do
+  removeJob path
+  liftIO $ threadDelay 1000
+  logMessage ("Job " <> path <> " is restarting due to file modification.")
+  startJob path
 
 destroyQueue :: Monitor ()
 destroyQueue = do
@@ -91,5 +97,3 @@ destroyMonitor watcher = do
   destroyQueue
   alertThreadDeath
   liftIO $ killINotify watcher
-  thread <- Lifted.myThreadId
-  Lifted.killThread thread

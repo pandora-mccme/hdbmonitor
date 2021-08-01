@@ -9,17 +9,24 @@ module Monitor.Config where
 import Control.Concurrent
 import Control.Concurrent.STM.TVar
 import Control.Exception
+import Control.Monad.IO.Class
 
 import System.FilePath
 
 import qualified Data.ByteString.Char8 as BSC
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
+import Data.Time
 
 import qualified Hasql.Connection as HaSQL
 
 import Dhall ( Generic, auto, inputFile, FromDhall, Natural )
 import Dhall.Deriving
+
+logMessage :: MonadIO m => String -> m ()
+logMessage event = do
+  time <- liftIO getCurrentTime
+  liftIO . putStrLn $ (show time) <> ": " <> event
 
 data Config = Config
   { configConnection :: String
@@ -57,14 +64,16 @@ readSettings :: FilePath -> String -> FilePath -> IO (Maybe Settings)
 readSettings dbDir tokenVar configName = do
   cfg <- try $ inputFile auto (dbDir </> configName)
   case cfg of
-    Left ex -> putStrLn ("Config for " <> dbDir <> " cannot be read.")
-            >> putStrLn ("Exception: " <> show @SomeException ex)
-            >> return Nothing
+    Left ex -> do
+      logMessage ("Config for " <> dbDir <> " cannot be read. See exception below.")
+      putStrLn ("Exception: " <> show @SomeException ex)
+      return Nothing
     Right Config{..} -> do
       dbConnection <- HaSQL.acquire (BSC.pack configConnection)
       case dbConnection of
-        Left _ -> putStrLn ("Connection string for " <> dbDir <> " directory does not provide connection to any database")
-               >> return Nothing
+        Left _ -> do
+          logMessage ("Config error: connection string for " <> dbDir <> " directory does not provide connection to any database")
+          return Nothing
         Right conn -> do
           queue <- newTVarIO HM.empty
           return . Just $ Settings

@@ -7,6 +7,7 @@ module Monitor.DataModel (
   , Assertion(..)
   , Settings(..)
   , readAssertion
+  , logMessage
   ) where
 
 import Control.Monad.Base

@@ -40,8 +40,10 @@ deathNote dir chan = standardRequest chan msg
     msg = "*Monitor at " <> (pack dir) <> " has stopped by deleting or moving it's working directory*"
 
 alertThreadDeath :: Monitor ()
-alertThreadDeath = asks databaseDirectory
-               >>= broadcast . deathNote
+alertThreadDeath = do
+  dir <- asks databaseDirectory
+  broadcast $ deathNote dir
+  logMessage ("Death alert sent for monitor at " <> dir)
 
 connectionErrorMessage :: String -> FilePath -> SomeChatId -> SendMessageRequest
 connectionErrorMessage err dir chan = standardRequest chan msg
@@ -51,30 +53,33 @@ connectionErrorMessage err dir chan = standardRequest chan msg
           \_Error message_: " <> (pack err)
 
 alertConnectionError :: String -> Monitor ()
-alertConnectionError err = asks databaseDirectory
-                       >>= broadcast . connectionErrorMessage err
+alertConnectionError err = do
+  dir <- asks databaseDirectory
+  broadcast $ connectionErrorMessage err dir
+  logMessage ("Database connection problem alert sent for monitor at " <> dir)
 
-queryErrorMessage :: FilePath -> String -> ByteString -> FilePath -> SomeChatId -> SendMessageRequest
-queryErrorMessage path err sql dir chan = standardRequest chan msg
+queryErrorMessage :: FilePath -> String -> ByteString -> SomeChatId -> SendMessageRequest
+queryErrorMessage path err sql chan = standardRequest chan msg
   where
-    msg = "*Query error while executing check for " <> (pack dir) <> " at " <> (pack path) <> ".* \n\
+    msg = "*Query error while executing check "  <> (pack path) <> ".* \n\
           \*Error message: *\n" <> (pack err) <> "\n\
           \*SQL text*: ```\n" <> (decodeUtf8 sql) <> "```\n\
           \It means incorrect assertion (parse errors are treated as 'not null') or error in query."
 
 alertQueryError :: FilePath -> String -> ByteString -> Monitor ()
-alertQueryError path err sql = asks databaseDirectory
-                           >>= broadcast . queryErrorMessage path err sql
+alertQueryError path err sql = do
+  broadcast $ queryErrorMessage path err sql
+  logMessage ("Query error alert sent for " <> path)
 
-assertionMessage :: FilePath -> Assertion -> ByteString -> FilePath -> String -> SomeChatId -> SendMessageRequest
-assertionMessage path assertion sql dir desc chan = standardRequest chan msg
+assertionMessage :: FilePath -> Assertion -> ByteString -> String -> SomeChatId -> SendMessageRequest
+assertionMessage path assertion sql desc chan = standardRequest chan msg
   where
-    msg = "*Assertion failed*:\nCheck for " <> (pack dir) <> " at " <> (pack path) <> ". \n\n\
+    msg = "*Assertion failed*:\nCheck " <> (pack path) <> ". \n\n\
           \*Assertion: *" <> (pack (show assertion)) <> "\n\n\
           \*SQL text*: ```\n" <> (decodeUtf8 sql) <> "```\n\
           \_Check description_:\n" <> (pack desc)
 
 alertFailedAssertion :: FilePath -> PureJob -> Monitor ()
 alertFailedAssertion path PureJob{..} = do
-  dir <- asks databaseDirectory
-  broadcast (assertionMessage path pureJobAssertion pureJobSQL dir pureJobDescription)
+  broadcast (assertionMessage path pureJobAssertion pureJobSQL pureJobDescription)
+  logMessage ("Failed assertion alert sent for " <> path)
