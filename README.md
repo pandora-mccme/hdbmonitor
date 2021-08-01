@@ -1,6 +1,7 @@
 ## db-monitor: data consistency monitoring for PostgreSQL.
 
 This simple tool periodically runs provided SQL-queries and alerts DBAs about failed checks via Telegram.
+It's highly configurable and tracks configuration changes.
 
 We believe such an instrument may help those who are administrating one or several databases on a single Linux server to find data malformations early. Hence promptly notify developers about possible bugs and other oddities like inaccurate manual data manipulation.
 
@@ -24,13 +25,12 @@ Structure of the directory is the following (in terms of `ls -R` command output)
 conf.dhall check1.sql check2.sql check3.sql ...
 ```
 
-`conf.dhall` is a configuration file for single database. Name of the file is fixed. It stores connection string, list of Telegram IDs of alert-receivers (channels), string which should prefix messages and some other default settings.
+`conf.dhall` is a configuration file for single database. Name of the file is fixed. It stores connection string, list of Telegram IDs of alert-receivers (channels) and some other default settings.
 
 Example contents of `conf.dhall`:
 ```
 { connection = "host=localhost user=user port=5432 dbname=postgres password=password"
 , channels = [-1001408342381, ...]
-, preamble = "Big Brother is watching your data:"
 , frequency = 1 -- Default period in minutes between checks.
 , assertion = "null" -- Default assertion made against result of any query.
 }
@@ -63,14 +63,14 @@ If `assertion` or `frequency` comment is omitted, default value applies.
 These comments must satisfy the following regular expression: `^--\s*[:field:]\s*=\s*[:value:]\s*$`. `description` lines are optional and will appear in alerts.
 
 Assertions can be made on SQL side or on Haskell side and it's more native to do them on SQL side, so `assertion` field may have only one of these values -- `null`, `not null`, `true`, `false`, `zero`.
-Frequency is expected to be positive integer. I.e any value less than 1 will be treated as 1, fractional numbers will be considered as parse errors.
+Frequency is expected to be positive integer. I.e any value less than 1 will be treated as 1, decimal numbers will be truncated.
 
 Incorrect assertion or syntactically wrong query will result in messages to maintainers.
 
 Telegram token is expected to be stored in environmental variable `TG_TOKEN`. You can pass name of the variable as an option. `--token <variable-name>` or `-T <variable-name>`.
 
-**Recommended usage:**
-Running -- `dbmonitor > monitor_log.txt &`. It's highly recommended to put `@reboot dbmonitor` line in your `crontab`.
+**Usage:**
+Running -- `dbmonitor > monitor_log.txt &`. It's recommended to put `@reboot dbmonitor` line in your `crontab`.
 
 **Options Reference:**
 
@@ -80,7 +80,30 @@ Running -- `dbmonitor > monitor_log.txt &`. It's highly recommended to put `@reb
 
 ### Behavior details
 
-* Job queue created by tool does not persist anywhere. Hence on restart all possible monitoring events will happen.
-* If job is modified, old instance of it's runnable representation is killed and replaced. Hence after change monitoring event will immediately happen.
+#### Persistence
+
+Tool is designed to be stable under changes of configuration.
+
+This stability is achived in a following manner:
+* If a new database directory is created in `monitor`, it's automatically tracked.
+* System tracks changes in check files and automatically reload them.
+* New check files are automatically tracked and run as jobs.
+* On removal of check file tool stops executing related job. Same for database directories - directory deletion causes monitor for this directory to stop.
+* `conf.dhall` changes are tracked. If config is invalid, old jobs are removed, but database monitor is not stopped, after config fix everything will work again.
+* On removal of `monitor` directory tool dies with error message.
+
+#### Other implementation details
+
+* We do not track hidden files (prefixed with dot). Also we do not care about plain files on a level of database directories and about directories on level of check files.
+* If assertion cannot be parsed from `conf.dhall` or check file, it is treated as `not null` instead of throwing error.
+* Database queries are based on `hasql` library, which has quite strict control over what query is expected to return. So you may encounter some unfamiliar errors in Telegram. In all cases we know they are reasonable against provided assertions. Also usage of this library as a backend limits us to PostgeSQL databases. It's possible to extend to other backends.
+* File watch is implemented over `inotify`. It's a Linux kernel subsystem, so it's why tool is Linux-specific. It's possible to extend at least to MacOS.
+* Hopefully you will find our logs detailed but not floody.
+
+### Telegram caveat.
+
+We expect users to be familiar with SQL, but there is a caveat in Telegram.
+
+Usually monitoring channels must be private. It's impossible to send message to private channel by it's name, that's why we restricted channel field of `conf.dhall` to chat ids. And it's tricky to get id of a private channel. There is a lot of instructions over the Intenet, most of them suggest to turn channel to public, send any message to it via API and use `chat_id` from response (make sure it's prefixed with -100). Or there are several bots allowing to do this thing.
 
 **_Issues and pull requests are welcome._**

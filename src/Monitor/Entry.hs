@@ -124,6 +124,7 @@ trackDatabase tgvar dbDir = do
   watcher <- initINotify
   tryToEnter ConfigNonWatched watcher dbDir tgvar
 
+-- FIXME: excess thread spawn?
 watchNewTrack :: FilePath -> String -> Event -> IO ()
 watchNewTrack _ _ DeletedSelf = die "Configuration directory deleted, exiting."
 watchNewTrack dir tgvar (MovedIn True path _) =
