@@ -6,7 +6,7 @@
 {-# LANGUAGE DataKinds #-}
 module Monitor.Config where
 
-import Control.Concurrent (ThreadId)
+import Control.Concurrent
 import Control.Concurrent.STM.TVar
 import Control.Exception
 
@@ -23,8 +23,7 @@ import Dhall.Deriving
 
 data Config = Config
   { configConnection :: String
-  , configChannels :: [String]
-  , configPreamble :: String
+  , configChannels :: [Int]
   , configFrequency :: Natural
   , configAssertion :: String
   }
@@ -38,13 +37,13 @@ data Assertion = AssertNull | AssertNotNull | AssertTrue | AssertFalse | AssertZ
 
 data Settings = Settings
   { dbConnection :: HaSQL.Connection
-  , channels :: [String]
-  , preambleText :: String
+  , channels :: [Integer]
   , defaultFrequency :: Int
   , defaultAssertion :: Assertion
   , telegramTokenVar :: String
   , databaseDirectory :: FilePath
   , jobQueue :: TVar (HashMap FilePath ThreadId)
+  , monitorMutex :: MVar ()
   }
 
 readAssertion :: String -> Assertion
@@ -69,13 +68,14 @@ readSettings dbDir tokenVar configName = do
                >> return Nothing
         Right conn -> do
           queue <- newTVarIO HM.empty
+          mutex <- newEmptyMVar
           return . Just $ Settings
             { dbConnection = conn
-            , channels = configChannels
-            , preambleText = configPreamble
+            , channels = map fromIntegral configChannels
             , defaultFrequency = fromIntegral configFrequency
             , defaultAssertion = readAssertion configAssertion
             , telegramTokenVar = tokenVar
             , databaseDirectory = dbDir
             , jobQueue = queue
+            , monitorMutex = mutex
             }

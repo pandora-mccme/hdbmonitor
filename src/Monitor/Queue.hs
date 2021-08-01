@@ -54,12 +54,22 @@ periodicEvent job@Job{..} path = forever $ do
   processQueryResult path pureJob queryResult
   liftIO $ threadDelay delay
 
+forkWaitable :: Monitor () -> Monitor (ThreadId, MVar ())
+forkWaitable action = do
+  handle <- liftIO newEmptyMVar
+  thread <- Lifted.forkFinally action (\_ -> liftIO $ do
+        putStrLn "Job terminated"
+        putMVar handle ()
+      )
+  return (thread, handle)
+
 startJob :: FilePath -> Monitor ()
 startJob path = do
   queue <- asks jobQueue
   job <- liftIO $ parseJob <$> T.readFile path
-  thread <- Lifted.fork $ periodicEvent job path
+  (thread, waitHandle) <- forkWaitable (periodicEvent job path)
   liftIO . atomically $ modifyTVar queue (HM.insert path thread)
+  void $ liftIO $ takeMVar waitHandle
 
 removeJob :: FilePath -> Monitor ()
 removeJob path = do
@@ -68,19 +78,21 @@ removeJob path = do
   liftIO . killThread $ queue HM.! path
   liftIO . atomically $ modifyTVar queueTVar (HM.delete path)
 
-removeAllJobs :: Monitor ()
-removeAllJobs = do
+restartJob :: FilePath -> Monitor ()
+restartJob path = removeJob path >> startJob path
+
+destroyQueue :: Monitor ()
+destroyQueue = do
   queueTVar <- asks jobQueue
   queue <- liftIO $ readTVarIO queueTVar
   mapM_ (liftIO . killThread) $ HM.elems queue
   liftIO . atomically $ modifyTVar queueTVar (\_ -> HM.empty)
 
-restartJob :: FilePath -> Monitor ()
-restartJob path = removeJob path >> startJob path
-
 destroyMonitor :: Monitor ()
 destroyMonitor = do
-  removeAllJobs
+  apocalypse <- asks monitorMutex
+  destroyQueue
   alertThreadDeath
+  liftIO $ putMVar apocalypse ()
   thread <- Lifted.myThreadId
   Lifted.killThread thread

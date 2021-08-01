@@ -1,8 +1,9 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE BangPatterns #-}
 module Monitor.Entry where
 
 import Control.Concurrent
-import Control.Exception
+import Control.Concurrent.Async
 
 import System.Directory
 import System.Exit
@@ -18,7 +19,7 @@ import Monitor.Queue
 import Monitor.DataModel
 
 updateEventVariety :: [EventVariety]
-updateEventVariety = [Modify, MoveIn, MoveOut, Create, Delete, DeleteSelf, MoveSelf]
+updateEventVariety = [Modify, Move, MoveIn, MoveOut, Create, Delete, DeleteSelf, MoveSelf]
 
 changeConfigAction :: INotify -> String -> FilePath -> FilePath -> IO ()
 changeConfigAction watcher dir tgvar path = if path == configName
@@ -39,12 +40,14 @@ configWatch _ _ _ _ = pure ()
 jobAction :: INotify -> FilePath -> String -> JobAction -> Settings -> FilePath -> IO ()
 jobAction watcher dir tgvar action cfg path = if notHidden path
   then if path == configName
-    then (flip runReaderT cfg . getMonitor $ removeAllJobs)
+    then (flip runReaderT cfg . getMonitor $ destroyQueue)
       >> tryToEnter ConfigNonWatched watcher dir tgvar
-    else flip runReaderT cfg . getMonitor $ case action of
-      Start -> startJob path
-      Restart -> restartJob path
-      Remove -> removeJob path
+    else do
+      liftIO (print action)
+      flip runReaderT cfg . getMonitor $ case action of
+        Start -> startJob (dir </> path)
+        Restart -> restartJob (dir </> path)
+        Remove -> removeJob (dir </> path)
   else pure ()
 
 -- watches check changes.
@@ -59,21 +62,16 @@ watchTower :: INotify -> FilePath -> String -> Settings -> Event -> IO ()
 watchTower _ _ _ cfg DeletedSelf = runReaderT (getMonitor destroyMonitor) cfg
 watchTower _ _ _ cfg (MovedSelf _) = runReaderT (getMonitor destroyMonitor) cfg
 watchTower watcher dir tgvar cfg (Modified False (Just path)) =
-  jobAction watcher dir tgvar Restart cfg $ BSC.unpack path
+  putStrLn "watch tower works" >> jobAction watcher dir tgvar Restart cfg (BSC.unpack path)
 watchTower watcher dir tgvar cfg (Deleted False path) =
   jobAction watcher dir tgvar Remove cfg $ BSC.unpack path
 watchTower watcher dir tgvar cfg (MovedOut False path _) =
   jobAction watcher dir tgvar Remove cfg $ BSC.unpack path
 watchTower watcher dir tgvar cfg (MovedIn False path _) =
-  jobAction watcher dir tgvar Start cfg $ BSC.unpack path
+  jobAction watcher dir tgvar Start cfg (BSC.unpack path)
 watchTower watcher dir tgvar cfg (Created False path) =
   jobAction watcher dir tgvar Start cfg $ BSC.unpack path
 watchTower _ _ _ _ _ = pure ()
-
-missingConfigCase :: INotify -> FilePath -> String -> IO ()
-missingConfigCase watcher dir tgvar = do
-  putStrLn $ "Configuration file is missing or invalid in " <> dir <> ", ignoring. You do not need to restart after config fix."
-  void $ addWatch watcher [MoveIn, Create, Modify] (BSC.pack dir) (configWatch watcher dir tgvar)
 
 notHidden :: FilePath -> Bool
 notHidden ('.':_) = False
@@ -91,10 +89,17 @@ enter watcher dir checks tgvar cfg = do
   -}
   killINotify watcher
   newWatcher <- initINotify
-  _ <- addWatch newWatcher updateEventVariety (BSC.pack dir) (watchTower newWatcher dir tgvar cfg)
+  void $ addWatch newWatcher updateEventVariety (BSC.pack dir) (void . async . watchTower newWatcher dir tgvar cfg)
   -- In directories there may be any content.
-  checkFiles <- filter notHidden <$> filterM doesFileExist checks
-  runReaderT (getMonitor $ mapM_ startJob checkFiles) cfg
+  checkFiles <- filterM doesFileExist (map (dir </>) . filter notHidden $ checks)
+  void $ mapConcurrently (\f -> runReaderT (getMonitor (startJob f)) cfg) checkFiles
+  -- FIXME: even if there is no jobs at all, enter must never get terminated as it can wait for new jobs.
+  void $ takeMVar (monitorMutex cfg)
+
+missingConfigCase :: INotify -> FilePath -> String -> IO ()
+missingConfigCase watcher dir tgvar = do
+  putStrLn $ "Configuration file is missing or invalid in " <> dir <> ", ignoring. You do not need to restart after config fix."
+  void $ addWatch watcher [MoveIn, Create, Modify] (BSC.pack dir) (void . async . configWatch watcher dir tgvar)
 
 maybeAddConfigWatch :: INotify -> ConfigWatchFlag -> FilePath -> String -> IO ()
 maybeAddConfigWatch watcher isWatched dir tgvar = case isWatched of
@@ -107,37 +112,31 @@ tryToEnter isWatched watcher dir tgvar = do
   case mConfigPath of
     [] -> maybeAddConfigWatch watcher isWatched dir tgvar
     (configPath:_) -> do
-      mSettings <- readSettings dir tgvar configPath
+      !mSettings <- readSettings dir tgvar configPath
       case mSettings of
         Nothing -> maybeAddConfigWatch watcher isWatched dir tgvar
         Just cfg -> enter watcher dir checks tgvar cfg
 
-finalizer :: FilePath -> Either SomeException () -> IO ()
-finalizer dir (Right ()) =
-  putStrLn $ "monitor for " <> dir <> " suddenly decided to be mortal with no exception or command received"
-finalizer dir (Left e) =
-  putStrLn $ "monitor for " <> dir <> " is dead by following reason: " <> show e
-
-trackDatabase :: FilePath -> String -> FilePath -> IO ()
-trackDatabase baseDir tgvar dbDir = void . flip forkFinally (finalizer dbDir) $
-  do
-    let dir = baseDir </> dbDir
-    watcher <- initINotify
-    tryToEnter ConfigNonWatched watcher dir tgvar
+trackDatabase :: String -> FilePath -> IO ()
+trackDatabase tgvar dbDir = do
+  watcher <- initINotify
+  tryToEnter ConfigNonWatched watcher dbDir tgvar
 
 watchNewTrack :: FilePath -> String -> Event -> IO ()
 watchNewTrack _ _ DeletedSelf = die "Configuration directory deleted"
 watchNewTrack dir tgvar (MovedIn True path _) =
-  trackDatabase dir tgvar $ BSC.unpack path
+  withAsync (trackDatabase tgvar $ dir </> BSC.unpack path) wait
 watchNewTrack dir tgvar (Created True path) =
-  trackDatabase dir tgvar $ BSC.unpack path
+  withAsync (trackDatabase tgvar $ dir </> BSC.unpack path) wait
 watchNewTrack _ _ _ = pure ()
 
 runApp :: Options -> IO ()
 runApp Options{..} = do
+  lock <- newEmptyMVar
   mDatabaseDirs <- listDirectory optionsDir
   -- There can be any plain files on top level.
-  databaseDirs <- filter notHidden <$> filterM doesDirectoryExist mDatabaseDirs
+  databaseDirs <- filterM doesDirectoryExist (map (optionsDir </>) . filter notHidden $ mDatabaseDirs)
   mainWatcher <- initINotify
   _ <- addWatch mainWatcher [MoveIn, Create, DeleteSelf] (BSC.pack optionsDir) (watchNewTrack optionsDir optionsToken)
-  mapM_ (trackDatabase optionsDir optionsToken) databaseDirs
+  void $ mapConcurrently (trackDatabase optionsToken) databaseDirs
+  takeMVar lock

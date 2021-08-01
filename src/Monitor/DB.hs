@@ -2,6 +2,7 @@
 module Monitor.DB where
 
 import Data.ByteString (ByteString)
+import qualified Data.Vector as V
 
 import qualified Hasql.Session as HaSQL
 import qualified Hasql.Statement as HaSQL
@@ -11,11 +12,11 @@ import qualified Hasql.Encoders as E
 import Monitor.DataModel
 
 decodeAssertNull :: D.Result Bool
-decodeAssertNull = test <$> D.rowMaybe (D.column (D.nullable (D.custom (\_ _ -> Right ()))))
+decodeAssertNull = test . V.toList <$> D.rowVector (D.column (D.nullable (D.custom (\_ _ -> Right ()))))
   where
-    test Nothing = True
-    test (Just Nothing) = True
-    test (Just (Just ())) = False
+    test [] = True
+    test [Nothing] = True
+    test _ = False
 
 decodeAssertNotNull :: D.Result Bool
 decodeAssertNotNull = not <$> decodeAssertNull
