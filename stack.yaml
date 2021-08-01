@@ -6,3 +6,5 @@ packages:
 extra-deps:
 - telegram-bot-simple-0.3.7@sha256:f7a7edb82b697d332523d0affce14bcf907d9b00c91c40d327eea8104259a6a7,3807
 - servant-multipart-client-0.12.1@sha256:d043063e2f33eab86840f87c4bdb16eb3fe4a5847a0b118e4f4265cf3ba4c9b3,1892
+- git: https://github.com/viviag/hinotify.git
+  commit: 652dee779c5fde5f13b5cc2caa1be1453af721fe

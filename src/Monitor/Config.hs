@@ -43,7 +43,6 @@ data Settings = Settings
   , telegramTokenVar :: String
   , databaseDirectory :: FilePath
   , jobQueue :: TVar (HashMap FilePath ThreadId)
-  , monitorMutex :: MVar ()
   }
 
 readAssertion :: String -> Assertion
@@ -68,7 +67,6 @@ readSettings dbDir tokenVar configName = do
                >> return Nothing
         Right conn -> do
           queue <- newTVarIO HM.empty
-          mutex <- newEmptyMVar
           return . Just $ Settings
             { dbConnection = conn
             , channels = map fromIntegral configChannels
@@ -77,5 +75,4 @@ readSettings dbDir tokenVar configName = do
             , telegramTokenVar = tokenVar
             , databaseDirectory = dbDir
             , jobQueue = queue
-            , monitorMutex = mutex
             }

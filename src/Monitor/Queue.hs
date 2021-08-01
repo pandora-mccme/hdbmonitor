@@ -9,6 +9,7 @@ import Control.Monad.STM
 
 import System.Directory
 import System.FilePath
+import System.INotify
 
 import qualified Data.HashMap.Strict as HM
 import Data.Maybe
@@ -57,10 +58,7 @@ periodicEvent job@Job{..} path = forever $ do
 forkWaitable :: Monitor () -> Monitor (ThreadId, MVar ())
 forkWaitable action = do
   handle <- liftIO newEmptyMVar
-  thread <- Lifted.forkFinally action (\_ -> liftIO $ do
-        putStrLn "Job terminated"
-        putMVar handle ()
-      )
+  thread <- Lifted.forkFinally action (\_ -> liftIO $ putMVar handle ())
   return (thread, handle)
 
 startJob :: FilePath -> Monitor ()
@@ -88,11 +86,10 @@ destroyQueue = do
   mapM_ (liftIO . killThread) $ HM.elems queue
   liftIO . atomically $ modifyTVar queueTVar (\_ -> HM.empty)
 
-destroyMonitor :: Monitor ()
-destroyMonitor = do
-  apocalypse <- asks monitorMutex
+destroyMonitor :: INotify -> Monitor ()
+destroyMonitor watcher = do
   destroyQueue
   alertThreadDeath
-  liftIO $ putMVar apocalypse ()
+  liftIO $ killINotify watcher
   thread <- Lifted.myThreadId
   Lifted.killThread thread
