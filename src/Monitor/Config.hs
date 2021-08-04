@@ -11,8 +11,6 @@ import Control.Concurrent.STM.TVar
 import Control.Exception
 import Control.Monad.IO.Class
 
-import System.FilePath
-
 import qualified Data.ByteString.Char8 as BSC
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
@@ -61,8 +59,8 @@ readAssertion "zero" = AssertZero
 readAssertion _ = AssertNotNull
 
 readSettings :: FilePath -> String -> FilePath -> IO (Maybe Settings)
-readSettings dbDir tokenVar configName = do
-  cfg <- try $ inputFile auto (dbDir </> configName)
+readSettings dbDir tokenVar configPath = do
+  cfg <- try $ inputFile auto configPath
   case cfg of
     Left ex -> do
       logMessage ("Config for " <> dbDir <> " cannot be read. See exception below.")

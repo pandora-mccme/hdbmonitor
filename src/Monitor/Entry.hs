@@ -1,7 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE BangPatterns #-}
 module Monitor.Entry where
 
+import Control.Concurrent
 import Control.Concurrent.Async
 
 import System.Directory
@@ -10,7 +10,6 @@ import System.FilePath
 import System.INotify
 
 import qualified Data.ByteString.Char8 as BSC
-import Data.List
 
 import Monitor.Options (Options(..))
 import Monitor.Config
@@ -20,43 +19,21 @@ import Monitor.DataModel
 updateEventVariety :: [EventVariety]
 updateEventVariety = [Modify, Move, MoveIn, MoveOut, Create, Delete, DeleteSelf, MoveSelf]
 
-changeConfigAction :: INotify -> String -> FilePath -> FilePath -> IO ()
-changeConfigAction watcher dir tgvar path = if path == configName
-  then tryToEnter ConfigWatched watcher dir tgvar
-  else pure ()
-
--- watches only config changes.
-configWatch :: INotify -> FilePath -> String -> Event -> IO ()
-configWatch watcher dir tgvar (Modified False (Just path)) =
-  changeConfigAction watcher dir tgvar $ BSC.unpack path
-configWatch watcher dir tgvar (MovedIn False path _) =
-  changeConfigAction watcher dir tgvar $ BSC.unpack path
-configWatch watcher dir tgvar (Created False path) =
-  changeConfigAction watcher dir tgvar $ BSC.unpack path
-configWatch _ _ _ _ = pure ()
-
--- FIXME: triad of parameters may be better to also be wrapped in Reader.
 jobAction :: INotify -> FilePath -> String -> JobAction -> Settings -> FilePath -> IO ()
 jobAction watcher dir tgvar action cfg path = if notHidden path
   then if path == configName
-    then (flip runReaderT cfg . getMonitor $ destroyQueue)
-      >> logMessage ("Monitor at " <> dir <> " is stopped due to configuration change. All jobs are removed, monitor will be restarted.")
-      >> tryToEnter ConfigNonWatched watcher dir tgvar
+    then do
+      flip runReaderT cfg . getMonitor $ destroyQueue
+      logMessage ("Monitor at " <> dir <> " is stopped due to configuration change. All jobs are removed, monitor will be restarted.")
+      tryToEnter dir tgvar
+      killINotify watcher
     else
-      flip runReaderT cfg . getMonitor $ case action of
+      void . async . flip runReaderT cfg . getMonitor $ case action of
         Start -> startJob (dir </> path)
         Restart -> restartJob (dir </> path)
         Remove -> removeJob (dir </> path)
   else pure ()
 
--- watches check changes.
-{-
-  Expected behavior:
-  On config changes -- drop all jobs, execute tryToEnter. On success inotify process is kept alive.
-  On file changes -- actions for each type of event.
-  Also note behavior on file renames -- two successive alerts comes, one deletes the job, one starts the same with another id.
-  DeleteSelf event must trigger suicide alert and immediate exit.
--}
 watchTower :: INotify -> FilePath -> String -> Settings -> Event -> IO ()
 watchTower watcher dir _ cfg DeletedSelf = logMessage ("Monitor at " <> dir <> " is stopped due to directory deletion." )
                                         >> runReaderT (getMonitor $ destroyMonitor watcher) cfg
@@ -74,73 +51,88 @@ watchTower watcher dir tgvar cfg (Created False path) =
   jobAction watcher dir tgvar Start cfg $ BSC.unpack path
 watchTower _ _ _ _ _ = pure ()
 
+enter :: INotify -> FilePath -> [FilePath] -> String -> Settings -> IO ()
+enter watcher dir checks tgvar cfg = do
+  void $ addWatch watcher updateEventVariety (BSC.pack dir) (watchTower watcher dir tgvar cfg)
+  mapM_ (\f -> void . async $ runReaderT (getMonitor $ startJob f) cfg) checks
+
+tryReadConfig :: FilePath -> MVar () -> String -> IO Settings
+tryReadConfig dir configChange tgvar = do
+  takeMVar configChange
+  readConfig dir configChange tgvar
+
+readConfig :: FilePath -> MVar () -> String -> IO Settings
+readConfig dir configChange tgvar = do
+  let configPath = dir </> configName
+  configExists <- doesFileExist configPath
+  if configExists
+    then do
+      mSettings <- readSettings dir tgvar configPath
+      case mSettings of
+        Nothing -> tryReadConfig dir configChange tgvar
+        Just cfg -> return cfg
+    else tryReadConfig dir configChange tgvar
+
+modifiedCfg :: MVar () -> Event -> IO ()
+modifiedCfg mvar _ = putMVar mvar ()
+
+readConfigTillSuccess :: INotify -> FilePath -> String -> MVar () -> IO Settings
+readConfigTillSuccess watcher dir tgvar configChange = do
+  wd <- addWatch watcher updateEventVariety (BSC.pack dir)
+    (modifiedCfg configChange)
+  cfg <- readConfig dir configChange tgvar
+  logMessage $ "Successfully read configuration at " <> dir
+  removeWatch wd
+  return cfg
+
 notHidden :: FilePath -> Bool
 notHidden ('.':_) = False
 notHidden _ = True
 
-enter :: INotify -> FilePath -> [FilePath] -> String -> Settings -> IO ()
-enter watcher dir checks tgvar cfg = do
-  {-
-    After successful start behavior changes: config now must be watched by process taking care about job queue,
-    we don't want old settings to be applied so far.
-    Hence on successful start we have to close watch descriptor. But we cannot pass it to it's own event handler.
-    So we must restart whole inotify.
-    First inotify process watches only config, second -- only queue.
-    When config breaks, it turns into loop of starting process and dies as soon as queue is successfully restarted,
-  -}
-  logMessage $ "Successfully read configuration at " <> dir
-  killINotify watcher
-  newWatcher@(INotify _ _ _ _ eventsThread) <- initINotify
-  void $ addWatch newWatcher updateEventVariety (BSC.pack dir) (void . async . watchTower newWatcher dir tgvar cfg)
-  -- In directories there may be any content.
-  checkFiles <- filterM doesFileExist (map (dir </>) . filter notHidden $ checks)
-  mapConcurrently_ (\f -> runReaderT (getMonitor $ startJob f) cfg) checkFiles
-  wait eventsThread
+isCheck :: FilePath -> Bool
+isCheck f = notHidden f && (f /= configName)
 
-missingConfigCase :: INotify -> FilePath -> String -> IO ()
-missingConfigCase watcher dir tgvar = do
-  putStrLn $ "Configuration file is missing or invalid in " <> dir <> ", ignoring. You do not need to restart after config fix."
-  void $ addWatch watcher [MoveIn, Create, Modify] (BSC.pack dir) (void . async . configWatch watcher dir tgvar)
+readInitialData :: FilePath -> IO [FilePath]
+readInitialData dir = do
+  files <- listDirectory dir
+  filterM doesFileExist (map (dir </>) . filter isCheck $ files)
 
-maybeAddConfigWatch :: INotify -> ConfigWatchFlag -> FilePath -> String -> IO ()
-maybeAddConfigWatch watcher isWatched dir tgvar = case isWatched of
-  ConfigWatched -> return ()
-  ConfigNonWatched -> missingConfigCase watcher dir tgvar
+readMonitor :: FilePath -> String -> IO (Settings, [FilePath])
+readMonitor dir tgvar = do
+  configReadMVar <- newEmptyMVar
+  cfg <- withINotify (\ino -> readConfigTillSuccess ino dir tgvar configReadMVar)
+  checks <- readInitialData dir
+  return (cfg, checks)
 
-tryToEnter :: ConfigWatchFlag -> INotify -> FilePath -> String -> IO ()
-tryToEnter isWatched watcher dir tgvar = do
-  (mConfigPath, checks) <- partition (== configName) <$> listDirectory dir
-  case mConfigPath of
-    [] -> maybeAddConfigWatch watcher isWatched dir tgvar
-    (configPath:_) -> do
-      !mSettings <- readSettings dir tgvar configPath
-      case mSettings of
-        Nothing -> maybeAddConfigWatch watcher isWatched dir tgvar
-        Just cfg -> enter watcher dir checks tgvar cfg
+tryToEnter :: FilePath -> String -> IO ()
+tryToEnter dir tgvar = do
+  (cfg, checks) <- readMonitor dir tgvar
+  ino <- initINotify
+  enter ino dir checks tgvar cfg
 
 trackDatabase :: String -> FilePath -> IO ()
 trackDatabase tgvar dbDir = do
   logMessage $ "Started tracking directory " <> dbDir <> " in separate thread."
-  watcher <- initINotify
-  tryToEnter ConfigNonWatched watcher dbDir tgvar
+  tryToEnter dbDir tgvar
 
 -- FIXME: excess thread spawn?
 watchNewTrack :: FilePath -> String -> Event -> IO ()
 watchNewTrack _ _ DeletedSelf = die "Configuration directory deleted, exiting."
 watchNewTrack dir tgvar (MovedIn True path _) =
-  withAsync (trackDatabase tgvar $ dir </> BSC.unpack path) wait
+  trackDatabase tgvar $ dir </> BSC.unpack path
 watchNewTrack dir tgvar (Created True path) =
-  withAsync (trackDatabase tgvar $ dir </> BSC.unpack path) wait
+  trackDatabase tgvar $ dir </> BSC.unpack path
 watchNewTrack _ _ _ = pure ()
 
 runApp :: Options -> IO ()
 runApp Options{..} = do
   logMessage "dbmonitor process started."
   mDatabaseDirs <- listDirectory optionsDir
-  -- There can be any plain files on top level.
   databaseDirs <- filterM doesDirectoryExist (map (optionsDir </>) . filter notHidden $ mDatabaseDirs)
   mainWatcher@(INotify _ _ _ _ eventsThread) <- initINotify
   void $ addWatch mainWatcher [MoveIn, Create, DeleteSelf] (BSC.pack optionsDir)
           (void . async . watchNewTrack optionsDir optionsToken)
   mapConcurrently_ (trackDatabase optionsToken) databaseDirs
+  -- Will block forever if databases set is completely updated, bug. FIXME
   wait eventsThread
+  killINotify mainWatcher

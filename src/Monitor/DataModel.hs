@@ -29,9 +29,6 @@ instance MonadBaseControl IO Monitor where
 configName :: FilePath
 configName = "conf.dhall"
 
-data ConfigWatchFlag = ConfigWatched | ConfigNonWatched
-  deriving (Eq, Show)
-
 data JobAction = Start | Restart | Remove
   deriving (Eq, Show)
 

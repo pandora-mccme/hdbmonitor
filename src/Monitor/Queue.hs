@@ -65,6 +65,12 @@ startJob :: FilePath -> Monitor ()
 startJob path = do
   queue <- asks jobQueue
   job <- liftIO $ parseJob <$> T.readFile path
+  queueMap <- liftIO $ readTVarIO queue
+  case HM.lookup path queueMap of
+    Nothing -> pure ()
+    Just accidental_thread -> do
+      logMessage ("Job " <> path <> " was probably initiated by different monitor threads. Please report a bug.")
+      liftIO $ killThread accidental_thread
   (thread, waitHandle) <- forkWaitable (periodicEvent job path)
   liftIO . atomically $ modifyTVar queue (HM.insert path thread)
   logMessage ("Job " <> path <> " is started.")
@@ -80,10 +86,14 @@ removeJob path = do
 
 restartJob :: FilePath -> Monitor ()
 restartJob path = do
-  removeJob path
-  liftIO $ threadDelay 1000
-  logMessage ("Job " <> path <> " is restarting due to file modification.")
-  startJob path
+  queueTVar <- asks jobQueue
+  queue <- liftIO $ readTVarIO queueTVar
+  liftIO . killThread $ queue HM.! path
+  job <- liftIO $ parseJob <$> T.readFile path
+  (thread, waitHandle) <- forkWaitable (periodicEvent job path)
+  liftIO . atomically $ modifyTVar queueTVar (HM.adjust (\_ -> thread) path)
+  logMessage ("Job " <> path <> " is restarted due to file modification.")
+  void $ liftIO $ takeMVar waitHandle
 
 destroyQueue :: Monitor ()
 destroyQueue = do
