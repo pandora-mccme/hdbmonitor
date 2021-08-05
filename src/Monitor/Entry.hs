@@ -133,6 +133,5 @@ runApp Options{..} = do
   void $ addWatch mainWatcher [MoveIn, Create, DeleteSelf] (BSC.pack optionsDir)
           (void . async . watchNewTrack optionsDir optionsToken)
   mapConcurrently_ (trackDatabase optionsToken) databaseDirs
-  -- Will block forever if databases set is completely updated, bug. FIXME
   wait eventsThread
   killINotify mainWatcher
