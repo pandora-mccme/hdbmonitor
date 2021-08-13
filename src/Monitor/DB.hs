@@ -11,6 +11,9 @@ import qualified Hasql.Encoders as E
 
 import Monitor.DataModel
 
+decodeAssertResultless :: D.Result Bool
+decodeAssertResultless = (\() -> True) <$> D.noResult
+
 decodeAssertNull :: D.Result Bool
 decodeAssertNull = test . V.toList <$> D.rowVector (D.column (D.nullable (D.custom (\_ _ -> Right ()))))
   where
@@ -49,6 +52,7 @@ session assertion sql = HaSQL.statement () $ case assertion of
   AssertZero -> HaSQL.Statement sql E.noParams decodeAssertZero True
   AssertTrue -> HaSQL.Statement sql E.noParams decodeAssertTrue True
   AssertFalse -> HaSQL.Statement sql E.noParams decodeAssertFalse True
+  AssertResultless -> HaSQL.Statement sql E.noParams decodeAssertResultless True
 
 runSQL :: PureJob -> Monitor JobFeedback
 runSQL PureJob{..} = do

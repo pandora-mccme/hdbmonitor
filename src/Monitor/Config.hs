@@ -37,7 +37,8 @@ data Config = Config
     (FromDhall)
     via Codec (Dhall.Deriving.Field (SnakeCase <<< DropPrefix "config")) Config
 
-data Assertion = AssertNull | AssertNotNull | AssertTrue | AssertFalse | AssertZero
+-- NOTE: resultless is for periodic actions.
+data Assertion = AssertNull | AssertNotNull | AssertTrue | AssertFalse | AssertZero | AssertResultless
   deriving (Eq, Show)
 
 data Settings = Settings
@@ -55,6 +56,7 @@ readAssertion "null" = AssertNull
 readAssertion "true" = AssertTrue
 readAssertion "false" = AssertFalse
 readAssertion "zero" = AssertZero
+readAssertion "resultless" = AssertResultless
 -- NOTE: mention in README.
 readAssertion _ = AssertNotNull
 
