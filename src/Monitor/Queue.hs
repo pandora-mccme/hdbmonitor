@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ImplicitParams #-}
 module Monitor.Queue where
 
 import Control.Concurrent
@@ -22,13 +23,14 @@ import Monitor.DB
 import Monitor.Telegram
 
 -- This is a hack. On connection error all thread must try to restart.
-touchConfig :: Monitor ()
+touchConfig :: (?mutex :: Mutexes) => Monitor ()
 touchConfig = do
   dir <- asks databaseDirectory
+  logMessage ("Monitor at " <> dir <> "is restarted in order to reestablish db connection.")
   time <- liftIO getCurrentTime
   liftIO $ setModificationTime (dir </> configName) time
 
-processQueryResult :: FilePath -> PureJob -> JobFeedback -> Monitor ()
+processQueryResult :: (?mutex :: Mutexes) => FilePath -> PureJob -> JobFeedback -> Monitor ()
 processQueryResult _path _ (ConnectionError err) =
   alertConnectionError err >> touchConfig
 processQueryResult path PureJob{..} (QueryError err) =
@@ -45,7 +47,7 @@ purify Job{..} assertion path = PureJob {
   , pureJobSQL = jobSQL
   }
 
-periodicEvent :: Job -> FilePath -> Monitor ()
+periodicEvent :: (?mutex :: Mutexes) => Job -> FilePath -> Monitor ()
 periodicEvent job@Job{..} path = forever $ do
   defFreq <- asks defaultFrequency
   defAssert <- asks defaultAssertion
@@ -53,15 +55,16 @@ periodicEvent job@Job{..} path = forever $ do
       delay = 60 * 10^((6)::Int) * (fromMaybe defFreq jobFrequency)
   queryResult <- runSQL pureJob
   processQueryResult path pureJob queryResult
+  logMessage ("Job at " <> path <> " is executed.")
   liftIO $ threadDelay delay
 
-forkWaitable :: Monitor () -> Monitor (ThreadId, MVar ())
+forkWaitable :: (?mutex :: Mutexes) => Monitor () -> Monitor (ThreadId, MVar ())
 forkWaitable action = do
   handle <- liftIO newEmptyMVar
   thread <- Lifted.forkFinally action (\_ -> liftIO $ putMVar handle ())
   return (thread, handle)
 
-startJob :: FilePath -> Monitor ()
+startJob :: (?mutex :: Mutexes) => FilePath -> Monitor ()
 startJob path = do
   queue <- asks jobQueue
   job <- liftIO $ parseJob <$> T.readFile path
@@ -76,7 +79,7 @@ startJob path = do
   logMessage ("Job " <> path <> " is started.")
   void $ liftIO $ takeMVar waitHandle
 
-removeJob :: FilePath -> Monitor ()
+removeJob :: (?mutex :: Mutexes) => FilePath -> Monitor ()
 removeJob path = do
   queueTVar <- asks jobQueue
   queue <- liftIO $ readTVarIO queueTVar
@@ -84,7 +87,7 @@ removeJob path = do
   liftIO . atomically $ modifyTVar queueTVar (HM.delete path)
   logMessage ("Job " <> path <> " is removed")
 
-restartJob :: FilePath -> Monitor ()
+restartJob :: (?mutex :: Mutexes) => FilePath -> Monitor ()
 restartJob path = do
   queueTVar <- asks jobQueue
   queue <- liftIO $ readTVarIO queueTVar
@@ -102,7 +105,7 @@ destroyQueue = do
   mapM_ (liftIO . killThread) $ HM.elems queue
   liftIO . atomically $ modifyTVar queueTVar (\_ -> HM.empty)
 
-destroyMonitor :: INotify -> Monitor ()
+destroyMonitor :: (?mutex :: Mutexes) => INotify -> Monitor ()
 destroyMonitor watcher = do
   destroyQueue
   alertThreadDeath

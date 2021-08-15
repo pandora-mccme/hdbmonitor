@@ -38,6 +38,7 @@ dependencies:
 - hinotify
 - directory
 - filepath
+- ansi-terminal
 
 library:
   source-dirs: src

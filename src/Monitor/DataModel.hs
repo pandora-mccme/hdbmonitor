@@ -1,11 +1,13 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE StrictData #-}
 module Monitor.DataModel (
     module Monitor.DataModel
   , module Control.Monad.Reader
   , Assertion(..)
   , Settings(..)
+  , Mutexes(..)
   , readAssertion
   , logMessage
   ) where

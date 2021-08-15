@@ -4,7 +4,11 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE StrictData #-}
+{-# LANGUAGE ImplicitParams #-}
 module Monitor.Config where
+
+import System.Console.ANSI
 
 import Control.Concurrent
 import Control.Concurrent.STM.TVar
@@ -21,10 +25,20 @@ import qualified Hasql.Connection as HaSQL
 import Dhall ( Generic, auto, inputFile, FromDhall, Natural )
 import Dhall.Deriving
 
-logMessage :: MonadIO m => String -> m ()
-logMessage event = do
-  time <- liftIO getCurrentTime
-  liftIO . putStrLn $ (show time) <> ": " <> event
+logMessage :: (?mutex :: Mutexes) => MonadIO m => String -> m ()
+logMessage event = liftIO $ do
+  takeMVar (stdoutMutex ?mutex)
+  time <- getCurrentTime
+  setSGR [SetColor Foreground Dull Green]
+  putStr $ (show time) <> ": "
+  setSGR [SetDefaultColor Foreground]
+  putStrLn $ event
+  putMVar (stdoutMutex ?mutex) ()
+
+data Mutexes = Mutexes {
+    dbMutex :: MVar ()
+  , stdoutMutex :: MVar ()
+  } deriving (Eq)
 
 data Config = Config
   { configConnection :: String
@@ -60,7 +74,7 @@ readAssertion "resultless" = AssertResultless
 -- NOTE: mention in README.
 readAssertion _ = AssertNotNull
 
-readSettings :: FilePath -> String -> FilePath -> IO (Maybe Settings)
+readSettings :: (?mutex :: Mutexes) => FilePath -> String -> FilePath -> IO (Maybe Settings)
 readSettings dbDir tokenVar configPath = do
   cfg <- try $ inputFile auto configPath
   case cfg of

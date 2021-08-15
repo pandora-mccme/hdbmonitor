@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 036a2a8071c1f8abb68845890688cb99e0dc42c80a796429575adc9cc5b105c5
+-- hash: 9bc5136070ba9d96073087d7abce9dda7ae56cb7ea83a5bf6784f593ef15926b
 
 name:           db-monitor
 version:        0.1.0.0
@@ -40,7 +40,8 @@ library
       src
   ghc-options: -Wall -Werror
   build-depends:
-      async
+      ansi-terminal
+    , async
     , base >=4.7
     , bytestring
     , dhall
@@ -69,7 +70,8 @@ executable dbmonitor
       app
   ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wall -Werror
   build-depends:
-      async
+      ansi-terminal
+    , async
     , base >=4.7
     , bytestring
     , db-monitor

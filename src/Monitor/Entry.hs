@@ -1,4 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ImplicitParams #-}
 module Monitor.Entry where
 
 import Control.Concurrent
@@ -19,7 +20,7 @@ import Monitor.DataModel
 updateEventVariety :: [EventVariety]
 updateEventVariety = [Modify, Move, MoveIn, MoveOut, Create, Delete, DeleteSelf, MoveSelf]
 
-jobAction :: INotify -> FilePath -> String -> JobAction -> Settings -> FilePath -> IO ()
+jobAction :: (?mutex :: Mutexes) => INotify -> FilePath -> String -> JobAction -> Settings -> FilePath -> IO ()
 jobAction watcher dir tgvar action cfg path = if notHidden path
   then if path == configName
     then do
@@ -34,7 +35,7 @@ jobAction watcher dir tgvar action cfg path = if notHidden path
         Remove -> removeJob (dir </> path)
   else pure ()
 
-watchTower :: INotify -> FilePath -> String -> Settings -> Event -> IO ()
+watchTower :: (?mutex :: Mutexes) => INotify -> FilePath -> String -> Settings -> Event -> IO ()
 watchTower watcher dir _ cfg DeletedSelf = logMessage ("Monitor at " <> dir <> " is stopped due to directory deletion." )
                                         >> runReaderT (getMonitor $ destroyMonitor watcher) cfg
 watchTower watcher dir _ cfg (MovedSelf _) = logMessage ("Monitor at " <> dir <> " is stopped due to directory move." )
@@ -51,17 +52,17 @@ watchTower watcher dir tgvar cfg (Created False path) =
   jobAction watcher dir tgvar Start cfg $ BSC.unpack path
 watchTower _ _ _ _ _ = pure ()
 
-enter :: INotify -> FilePath -> [FilePath] -> String -> Settings -> IO ()
+enter :: (?mutex :: Mutexes) => INotify -> FilePath -> [FilePath] -> String -> Settings -> IO ()
 enter watcher dir checks tgvar cfg = do
   void $ addWatch watcher updateEventVariety (BSC.pack dir) (watchTower watcher dir tgvar cfg)
   mapM_ (\f -> void . async $ runReaderT (getMonitor $ startJob f) cfg) checks
 
-tryReadConfig :: FilePath -> MVar () -> String -> IO Settings
+tryReadConfig :: (?mutex :: Mutexes) => FilePath -> MVar () -> String -> IO Settings
 tryReadConfig dir configChange tgvar = do
   takeMVar configChange
   readConfig dir configChange tgvar
 
-readConfig :: FilePath -> MVar () -> String -> IO Settings
+readConfig :: (?mutex :: Mutexes) => FilePath -> MVar () -> String -> IO Settings
 readConfig dir configChange tgvar = do
   let configPath = dir </> configName
   configExists <- doesFileExist configPath
@@ -76,7 +77,7 @@ readConfig dir configChange tgvar = do
 modifiedCfg :: MVar () -> Event -> IO ()
 modifiedCfg mvar _ = putMVar mvar ()
 
-readConfigTillSuccess :: INotify -> FilePath -> String -> MVar () -> IO Settings
+readConfigTillSuccess :: (?mutex :: Mutexes) => INotify -> FilePath -> String -> MVar () -> IO Settings
 readConfigTillSuccess watcher dir tgvar configChange = do
   wd <- addWatch watcher updateEventVariety (BSC.pack dir)
     (modifiedCfg configChange)
@@ -97,26 +98,26 @@ readInitialData dir = do
   files <- listDirectory dir
   filterM doesFileExist (map (dir </>) . filter isCheck $ files)
 
-readMonitor :: FilePath -> String -> IO (Settings, [FilePath])
+readMonitor :: (?mutex :: Mutexes) => FilePath -> String -> IO (Settings, [FilePath])
 readMonitor dir tgvar = do
   configReadMVar <- newEmptyMVar
   cfg <- withINotify (\ino -> readConfigTillSuccess ino dir tgvar configReadMVar)
   checks <- readInitialData dir
   return (cfg, checks)
 
-tryToEnter :: FilePath -> String -> IO ()
+tryToEnter :: (?mutex :: Mutexes) => FilePath -> String -> IO ()
 tryToEnter dir tgvar = do
   (cfg, checks) <- readMonitor dir tgvar
   ino <- initINotify
   enter ino dir checks tgvar cfg
 
-trackDatabase :: String -> FilePath -> IO ()
+trackDatabase :: (?mutex :: Mutexes) => String -> FilePath -> IO ()
 trackDatabase tgvar dbDir = do
   logMessage $ "Started tracking directory " <> dbDir <> " in separate thread."
   tryToEnter dbDir tgvar
 
 -- FIXME: excess thread spawn?
-watchNewTrack :: FilePath -> String -> Event -> IO ()
+watchNewTrack :: (?mutex :: Mutexes) => FilePath -> String -> Event -> IO ()
 watchNewTrack _ _ DeletedSelf = die "Configuration directory deleted, exiting."
 watchNewTrack dir tgvar (MovedIn True path _) =
   trackDatabase tgvar $ dir </> BSC.unpack path
@@ -126,12 +127,15 @@ watchNewTrack _ _ _ = pure ()
 
 runApp :: Options -> IO ()
 runApp Options{..} = do
-  logMessage "dbmonitor process started."
-  mDatabaseDirs <- listDirectory optionsDir
-  databaseDirs <- filterM doesDirectoryExist (map (optionsDir </>) . filter notHidden $ mDatabaseDirs)
-  mainWatcher@(INotify _ _ _ _ eventsThread) <- initINotify
-  void $ addWatch mainWatcher [MoveIn, Create, DeleteSelf] (BSC.pack optionsDir)
-          (void . async . watchNewTrack optionsDir optionsToken)
-  mapConcurrently_ (trackDatabase optionsToken) databaseDirs
-  wait eventsThread
-  killINotify mainWatcher
+  dbMutex <- newMVar ()
+  stdoutMutex <- newMVar ()
+  let ?mutex = Mutexes{..} in do
+    logMessage "dbmonitor process started."
+    mDatabaseDirs <- listDirectory optionsDir
+    databaseDirs <- filterM doesDirectoryExist (map (optionsDir </>) . filter notHidden $ mDatabaseDirs)
+    mainWatcher@(INotify _ _ _ _ eventsThread) <- initINotify
+    void $ addWatch mainWatcher [MoveIn, Create, DeleteSelf] (BSC.pack optionsDir)
+            (void . async . watchNewTrack optionsDir optionsToken)
+    mapConcurrently_ (trackDatabase optionsToken) databaseDirs
+    wait eventsThread
+    killINotify mainWatcher

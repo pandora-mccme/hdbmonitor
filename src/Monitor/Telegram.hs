@@ -1,5 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ImplicitParams #-}
 module Monitor.Telegram where
 
 import Data.ByteString (ByteString)
@@ -39,7 +40,7 @@ deathNote dir chan = standardRequest chan msg
   where
     msg = "*Monitor at " <> (pack dir) <> " has stopped by deleting or moving it's working directory*"
 
-alertThreadDeath :: Monitor ()
+alertThreadDeath :: (?mutex :: Mutexes) => Monitor ()
 alertThreadDeath = do
   dir <- asks databaseDirectory
   broadcast $ deathNote dir
@@ -52,7 +53,7 @@ connectionErrorMessage err dir chan = standardRequest chan msg
           \It may indicate cluster restart, check all applications.\n\
           \_Error message_: " <> (pack err)
 
-alertConnectionError :: String -> Monitor ()
+alertConnectionError :: (?mutex :: Mutexes) => String -> Monitor ()
 alertConnectionError err = do
   dir <- asks databaseDirectory
   broadcast $ connectionErrorMessage err dir
@@ -66,7 +67,7 @@ queryErrorMessage path err sql chan = standardRequest chan msg
           \*SQL text*: ```\n" <> (decodeUtf8 sql) <> "```\n\
           \It means incorrect assertion (parse errors are treated as 'not null') or error in query."
 
-alertQueryError :: FilePath -> String -> ByteString -> Monitor ()
+alertQueryError :: (?mutex :: Mutexes) => FilePath -> String -> ByteString -> Monitor ()
 alertQueryError path err sql = do
   broadcast $ queryErrorMessage path err sql
   logMessage ("Query error alert sent for " <> path)
@@ -79,7 +80,7 @@ assertionMessage path assertion sql desc chan = standardRequest chan msg
           \*SQL text*: ```\n" <> (decodeUtf8 sql) <> "```\n\
           \_Check description_:\n" <> (pack desc)
 
-alertFailedAssertion :: FilePath -> PureJob -> Monitor ()
+alertFailedAssertion :: (?mutex :: Mutexes) => FilePath -> PureJob -> Monitor ()
 alertFailedAssertion path PureJob{..} = do
   broadcast (assertionMessage path pureJobAssertion pureJobSQL pureJobDescription)
   logMessage ("Failed assertion alert sent for " <> path)
