@@ -2,6 +2,8 @@
 {-# LANGUAGE ImplicitParams #-}
 module Monitor.Entry where
 
+import GHC.Conc (labelThread)
+
 import Control.Concurrent
 import Control.Concurrent.Async
 
@@ -29,7 +31,7 @@ jobAction watcher dir tgvar action cfg path = if notHidden path
       tryToEnter dir tgvar
       killINotify watcher
     else
-      void . async . flip runReaderT cfg . getMonitor $ case action of
+      label path . async . flip runReaderT cfg . getMonitor $ case action of
         Start -> startJob (dir </> path)
         Restart -> restartJob (dir </> path)
         Remove -> removeJob (dir </> path)
@@ -125,6 +127,11 @@ watchNewTrack dir tgvar (Created True path) =
   trackDatabase tgvar $ dir </> BSC.unpack path
 watchNewTrack _ _ _ = pure ()
 
+label :: String -> IO (Async ()) -> IO ()
+label lab action = do
+  asyn <- action
+  labelThread (asyncThreadId asyn) lab
+
 runApp :: Options -> IO ()
 runApp Options{..} = do
   dbMutex <- newMVar ()
@@ -135,7 +142,8 @@ runApp Options{..} = do
     databaseDirs <- filterM doesDirectoryExist (map (optionsDir </>) . filter notHidden $ mDatabaseDirs)
     mainWatcher@(INotify _ _ _ _ eventsThread) <- initINotify
     void $ addWatch mainWatcher [MoveIn, Create, DeleteSelf] (BSC.pack optionsDir)
-            (void . async . watchNewTrack optionsDir optionsToken)
+            ( label optionsDir . async . watchNewTrack optionsDir optionsToken
+            )
     mapConcurrently_ (trackDatabase optionsToken) databaseDirs
     wait eventsThread
     killINotify mainWatcher

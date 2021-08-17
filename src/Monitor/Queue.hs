@@ -3,10 +3,11 @@
 {-# LANGUAGE ImplicitParams #-}
 module Monitor.Queue where
 
+import GHC.Conc
+
 import Control.Concurrent
 import qualified Control.Concurrent.Lifted as Lifted
 import Control.Concurrent.STM.TVar
-import Control.Monad.STM
 
 import System.Directory
 import System.FilePath
@@ -75,6 +76,7 @@ startJob path = do
       logMessage ("Job " <> path <> " was probably initiated by different monitor threads. Please report a bug.")
       liftIO $ killThread accidental_thread
   (thread, waitHandle) <- forkWaitable (periodicEvent job path)
+  liftIO $ labelThread thread ("jobThread: " <> path)
   liftIO . atomically $ modifyTVar queue (HM.insert path thread)
   logMessage ("Job " <> path <> " is started.")
   void $ liftIO $ takeMVar waitHandle
@@ -94,6 +96,7 @@ restartJob path = do
   liftIO . killThread $ queue HM.! path
   job <- liftIO $ parseJob <$> T.readFile path
   (thread, waitHandle) <- forkWaitable (periodicEvent job path)
+  liftIO $ labelThread thread ("jobThread: " <> path)
   liftIO . atomically $ modifyTVar queueTVar (HM.adjust (\_ -> thread) path)
   logMessage ("Job " <> path <> " is restarted due to file modification.")
   void $ liftIO $ takeMVar waitHandle
