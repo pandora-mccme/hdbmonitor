@@ -3,11 +3,11 @@
 This simple tool periodically runs provided SQL-queries and alerts DBAs about failed checks via Telegram.
 It's highly configurable and tracks configuration changes.
 
-We believe such an instrument may help those who are administrating one or several databases on a single Linux server to find data malformations early. Hence promptly notify developers about possible bugs and other oddities like inaccurate manual data manipulation.
+We believe such an instrument may help those who are administrating one or several databases on a single Linux server to find data malformations early. Hence promptly notify developers about possible bugs and other oddities like inaccurate manual data manipulation. Other use case -- executing periodic actions like vacuuming on database with failure alerts.
 
 And we hope it allows more structured monitoring process than arbitrary one built on shell scripts.
 
-All unnecessary restrictions (PostgreSQL, Telegram, Linux) are coming from our limited resources and current conditions. They are not ideological, so we will be glad to accept pull requests broadening domain of the tool.
+All unnecessary restrictions (PostgreSQL, Telegram, Linux with `libc6` >= 2.29) are coming from our limited resources and current conditions. They are not ideological, so we will be glad to accept pull requests broadening domain of the tool.
 
 ### Configuration and usage.
 
@@ -70,7 +70,7 @@ Incorrect assertion or syntactically wrong query will result in messages to main
 Telegram token is expected to be stored in environmental variable `TG_TOKEN`. You can pass name of the variable as an option. `--token <variable-name>` or `-T <variable-name>`.
 
 **Usage:**
-Running -- `dbmonitor > monitor_log.txt &`. It's recommended to put `@reboot dbmonitor` line in your `crontab`.
+Running -- `unbuffer dbmonitor >> monitor.log &`. It's recommended to put `@reboot unbuffer dbmonitor >> monitor.log` line in your `crontab`. This example uses `unbuffer` from `except` package.
 
 **Options Reference:**
 
