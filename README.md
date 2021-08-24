@@ -11,7 +11,7 @@ All unnecessary restrictions (PostgreSQL, Telegram, Linux with `libc6` >= 2.29) 
 
 ### Configuration and usage.
 
-To be run `dbmonitor` requires a configuration directory. By default it will be searched in current directory under name `monitor`, but you may pass it as an option (`--dir <path>` or `-D <path>`).
+To be run `dbmonitor` requires a configuration directory. By default it will be searched in current directory under name `.monitor`, but you may pass it as an option (`--dir <path>` or `-D <path>`).
 
 Structure of the directory is the following (in terms of `ls -R` command output):
 ```
@@ -70,13 +70,18 @@ Incorrect assertion or syntactically wrong query will result in messages to main
 Telegram token is expected to be stored in environmental variable `TG_TOKEN`. You can pass name of the variable as an option. `--token <variable-name>` or `-T <variable-name>`.
 
 **Usage:**
-Running -- `unbuffer dbmonitor >> monitor.log &`. It's recommended to put `@reboot unbuffer dbmonitor >> monitor.log` line in your `crontab`. This example uses `unbuffer` from `except` package.
+Running -- `unbuffer dbmonitor >> .monitor.log &`. It's recommended to put `@reboot unbuffer dbmonitor >> .monitor.log` line in your `crontab`. This example uses `unbuffer` from `except` package.
 
 **Options Reference:**
 
 * `--token <variable-name>` or `-T <variable-name>` -- name of environmental variable where Telegram token is stored.
 * `--dir <path>` or `-D <path>` -- path to configuration directory.
 * `--help` or `-h` -- see options reference in usual optparse-applicative format.
+
+### Installation.
+
+`dbmonitor` will soon be available as .deb package from repository at `repo`. I don't know distribution details yet, if it's possible to do not via root installation, it will install it in user's crontab and create configuration directory.
+Depends on `except` package. If where is no manual crontab, recommends `except` package. We are open to arguments about manipulating log file from Haskell.
 
 ### Behavior details
 
@@ -85,19 +90,19 @@ Running -- `unbuffer dbmonitor >> monitor.log &`. It's recommended to put `@rebo
 Tool is designed to be stable under changes of configuration.
 
 This stability is achived in a following manner:
-* If a new database directory is created in `monitor`, it's automatically tracked.
+* If a new database directory is created in `.monitor`, it's automatically tracked.
 * System tracks changes in check files and automatically reload them.
 * New check files are automatically tracked and run as jobs.
 * On removal of check file tool stops executing related job. Same for database directories - directory deletion causes monitor for this directory to stop.
 * `conf.dhall` changes are tracked. If config is invalid, old jobs are removed, but database monitor is not stopped, after config fix everything will work again.
-* On removal of `monitor` directory tool dies with error message.
+* On removal of `.monitor` directory tool dies with error message.
 
 #### Other implementation details
 
 * We do not track hidden files (prefixed with dot). Also we do not care about plain files on a level of database directories and about directories on level of check files.
 * If assertion cannot be parsed from `conf.dhall` or check file, it is treated as `not null` instead of throwing error.
 * Database queries are based on `hasql` library, which has quite strict control over what query is expected to return. So you may encounter some unfamiliar errors in Telegram. In all cases we know they are reasonable against provided assertions. Also usage of this library as a backend limits us to PostgeSQL databases. It's possible to extend to other backends.
-* File watch is implemented over `inotify`. It's a Linux kernel subsystem, so it's why tool is Linux-specific. It's possible to extend at least to MacOS.
+* File watch is implemented over `inotify`. It's a Linux kernel subsystem, so it's why tool is Linux-specific. It's possible to extend at least to MacOS using `kqueue` backend.
 * Hopefully you will find our logs detailed but not floody.
 
 ### Telegram caveat.
@@ -105,5 +110,12 @@ This stability is achived in a following manner:
 We expect users to be familiar with SQL, but there is a caveat in Telegram.
 
 Usually monitoring channels must be private. It's impossible to send message to private channel by it's name, that's why we restricted channel field of `conf.dhall` to chat ids. And it's tricky to get id of a private channel. There is a lot of instructions over the Intenet, most of them suggest to turn channel to public, send any message to it via API and use `chat_id` from response (make sure it's prefixed with -100). Or there are several bots allowing to do this thing.
+
+### Attribution.
+
+This tool was initially written for HyperMath team at Moscow Center for Continuous Mathematical Education. Our [github](https://github.com/Pandora-MCCME).
+Systems we are maintaning include https://7.math.ru, https://mathtraining.ru and several services for developing interactive texts in school-level mathematics.
+
+Code ownership and authorship are my own.
 
 **_Issues and pull requests are welcome._**

@@ -62,8 +62,8 @@ alertConnectionError err = do
 queryErrorMessage :: FilePath -> String -> ByteString -> SomeChatId -> SendMessageRequest
 queryErrorMessage path err sql chan = standardRequest chan msg
   where
-    msg = "*Query error while executing check "  <> (pack path) <> ".* \n\
-          \*Error message: *\n" <> (pack err) <> "\n\
+    msg = "*Query error while executing check `"  <> (pack path) <> "`.* \n\
+          \*Error message: *\n```" <> (pack err) <> "```\n\
           \*SQL text*: ```\n" <> (decodeUtf8 sql) <> "```\n\
           \It means incorrect assertion (parse errors are treated as 'not null') or error in query."
 
@@ -75,7 +75,7 @@ alertQueryError path err sql = do
 assertionMessage :: FilePath -> Assertion -> ByteString -> String -> SomeChatId -> SendMessageRequest
 assertionMessage path assertion sql desc chan = standardRequest chan msg
   where
-    msg = "*Assertion failed*:\nCheck " <> (pack path) <> ". \n\n\
+    msg = "*Assertion failed*:\nCheck `" <> (pack path) <> "`. \n\n\
           \*Assertion: *" <> (pack (show assertion)) <> "\n\n\
           \*SQL text*: ```\n" <> (decodeUtf8 sql) <> "```\n\
           \_Check description_:\n" <> (pack desc)

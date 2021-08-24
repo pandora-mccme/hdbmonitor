@@ -13,7 +13,7 @@ optionsParser = Options
       ( long "dir"
      <> short 'D'
      <> metavar "CONFIG_DIR"
-     <> value "monitor"
+     <> value ".monitor"
      <> help "Path to configuration directory" )
   <*> strOption
       ( long "token"
