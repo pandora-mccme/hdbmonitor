@@ -70,7 +70,7 @@ Incorrect assertion or syntactically wrong query will result in messages to main
 Telegram token is expected to be stored in environmental variable `TG_TOKEN`. You can pass name of the variable as an option. `--token <variable-name>` or `-T <variable-name>`.
 
 **Usage:**
-Running -- `unbuffer dbmonitor >> .monitor.log &`. It's recommended to put `@reboot unbuffer dbmonitor >> .monitor.log` line in your `crontab`. This example uses `unbuffer` from `except` package.
+Running -- `dbmonitor >> .monitor.log &`. It's recommended to put `@reboot dbmonitor >> .monitor.log` line in your `crontab`.
 
 **Options Reference:**
 
@@ -81,7 +81,6 @@ Running -- `unbuffer dbmonitor >> .monitor.log &`. It's recommended to put `@reb
 ### Installation.
 
 `dbmonitor` will soon be available as .deb package from repository at `repo`. I don't know distribution details yet, if it's possible to do not via root installation, it will install it in user's crontab and create configuration directory.
-Depends on `except` package. If where is no manual crontab, recommends `except` package. We are open to arguments about manipulating log file from Haskell.
 
 ### Behavior details
 

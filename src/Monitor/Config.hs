@@ -9,6 +9,7 @@
 module Monitor.Config where
 
 import System.Console.ANSI
+import System.IO (hFlush, stdout)
 
 import Control.Concurrent
 import Control.Concurrent.STM.TVar
@@ -33,6 +34,7 @@ logMessage event = liftIO $ do
   putStr $ (show time) <> ": "
   setSGR [SetDefaultColor Foreground]
   putStrLn $ event
+  hFlush stdout
   putMVar (stdoutMutex ?mutex) ()
 
 data Mutexes = Mutexes {

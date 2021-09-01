@@ -1,10 +1,10 @@
 name:                db-monitor
 version:             0.1.0.0
-github:              "Pandora-MCCME/db-monitor"
+github:              "viviag/db-monitor"
 license:             BSD3
 author:              "Vitalii Guzeev"
 maintainer:          "viviag@yandex.ru"
-copyright:           "2021 MCCME"
+copyright:           "2021 Vitalii Guzeev"
 
 extra-source-files:
 - README.md
@@ -16,7 +16,7 @@ extra-source-files:
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
 # common to point users to the README.md file.
-description:    Please see the README on GitHub at <https://github.com/Pandora-MCCME/db-monitor#readme>
+description:    Please see the README on GitHub at <https://github.com/viviag/db-monitor#readme>
 
 dependencies:
 - base >= 4.7
