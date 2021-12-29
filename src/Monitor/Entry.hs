@@ -144,6 +144,7 @@ runApp Options{..} = do
     void $ addWatch mainWatcher [MoveIn, Create, DeleteSelf] (BSC.pack optionsDir)
             ( label optionsDir . async . watchNewTrack optionsDir optionsToken
             )
-    mapConcurrently_ (trackDatabase optionsToken) databaseDirs
+    mapM_ (void . async . trackDatabase optionsToken) databaseDirs
     wait eventsThread
+    logMessage "inotify died"
     killINotify mainWatcher
