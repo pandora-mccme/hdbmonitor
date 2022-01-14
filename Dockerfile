@@ -7,4 +7,5 @@ RUN stack setup
 RUN stack install --local-bin-path .
 
 FROM scratch
-COPY --from=builder /build/dbmonitor /dbmonitor
+COPY --from=builder /build/dbmonitor /
+CMD ["/dbmonitor"]
