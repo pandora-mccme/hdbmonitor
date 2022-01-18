@@ -7,5 +7,6 @@ RUN stack setup
 RUN stack install --local-bin-path .
 
 FROM debian
+RUN apt-get update && apt-get install -y libpq5 && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /build/dbmonitor /
 CMD ["/dbmonitor"]
