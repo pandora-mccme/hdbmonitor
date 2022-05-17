@@ -1,5 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ImplicitParams #-}
+{-# LANGUAGE BangPatterns #-}
 module Monitor.DB where
 
 import Control.Concurrent
@@ -59,7 +60,7 @@ session assertion sql = HaSQL.statement () $ case assertion of
 
 runSQL :: (?mutex :: Mutexes) => PureJob -> Monitor JobFeedback
 runSQL PureJob{..} = do
-  conn <- asks dbConnection
+  !conn <- asks dbConnection
   liftIO $ takeMVar (dbMutex ?mutex)
   result <- liftIO $ HaSQL.run (session pureJobAssertion pureJobSQL) conn
   liftIO $ putMVar (dbMutex ?mutex) ()

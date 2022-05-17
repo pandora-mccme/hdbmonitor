@@ -6,6 +6,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE ImplicitParams #-}
+{-# LANGUAGE BangPatterns #-}
 module Monitor.Config where
 
 import System.Console.ANSI
@@ -29,7 +30,7 @@ import Dhall.Deriving
 logMessage :: (?mutex :: Mutexes) => MonadIO m => String -> m ()
 logMessage event = liftIO $ do
   takeMVar (stdoutMutex ?mutex)
-  time <- getCurrentTime
+  !time <- getCurrentTime
   setSGR [SetColor Foreground Dull Green]
   putStr $ (show time) <> ": "
   setSGR [SetDefaultColor Foreground]

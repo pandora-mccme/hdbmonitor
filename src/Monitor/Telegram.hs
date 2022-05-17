@@ -28,7 +28,8 @@ standardRequest chan txt = SendMessageRequest
 postAlert :: SendMessageRequest -> Monitor ()
 postAlert msg = asks telegramTokenVar >>= \tgvar -> liftIO $ do
   token <- getEnvToken tgvar
-  void $ defaultRunBot token (sendMessage msg)
+  resp <- defaultRunBot token (sendMessage msg)
+  print resp
 
 broadcast :: (SomeChatId -> SendMessageRequest) -> Monitor ()
 broadcast f = do
