@@ -93,12 +93,18 @@ notHidden ('.':_) = False
 notHidden _ = True
 
 isCheck :: FilePath -> Bool
-isCheck f = notHidden f && (f /= configName)
+isCheck f = notHidden f && (f /= configName) -- && takeExtension f == ".sql"
 
 readInitialData :: FilePath -> IO [FilePath]
 readInitialData dir = do
-  files <- listDirectory dir
-  filterM doesFileExist (map (dir </>) . filter isCheck $ files)
+  contents <- listDirectory dir
+  files <- filterM doesFileExist . map (dir </>) . filter isCheck $ contents
+  subdirs <- filterM doesDirectoryExist . map (dir </>) $ contents
+  print files
+  case subdirs of
+    [] -> return files
+    lst -> mapM (readInitialData) lst
+       >>= \nested -> return (files ++ concat nested)
 
 readMonitor :: (?mutex :: Mutexes) => FilePath -> String -> IO (Settings, [FilePath])
 readMonitor dir tgvar = do

@@ -36,7 +36,7 @@ Example contents of `conf.dhall`:
 }
 ```
 
-Files of checks and jobs are plain SQL files with optional comments required for setting check behavior. These files may have arbitrary names, even extension is unchecked.
+Files of checks and jobs are plain SQL files with optional comments required for setting check behavior. These files may have arbitrary names with .sql extension.
 
 Proper check file contents may look like that:
 ```
