@@ -99,7 +99,7 @@ readInitialData :: FilePath -> IO [FilePath]
 readInitialData dir = do
   contents <- listDirectory dir
   files <- filterM doesFileExist . map (dir </>) . filter isCheck $ contents
-  subdirs <- filterM doesDirectoryExist . map (dir </>) $ contents
+  subdirs <- filterM doesDirectoryExist . map (dir </>) . filter notHidden $ contents
   case subdirs of
     [] -> return files
     lst -> mapM (readInitialData) lst
