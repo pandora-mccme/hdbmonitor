@@ -3,8 +3,6 @@
 {-# LANGUAGE BangPatterns #-}
 module Monitor.DB where
 
-import Control.Concurrent
-
 import Data.ByteString (ByteString)
 import qualified Data.Vector as V
 
@@ -58,12 +56,10 @@ session assertion sql = HaSQL.statement () $ case assertion of
   AssertFalse -> HaSQL.Statement sql E.noParams decodeAssertFalse False
   AssertResultless -> HaSQL.Statement sql E.noParams decodeAssertResultless False
 
-runSQL :: (?mutex :: Mutexes) => PureJob -> Monitor JobFeedback
+runSQL :: PureJob -> Monitor JobFeedback
 runSQL PureJob{..} = do
-  !conn <- asks dbConnection
-  liftIO $ takeMVar (dbMutex ?mutex)
-  result <- liftIO $ HaSQL.run (session pureJobAssertion pureJobSQL) conn
-  liftIO $ putMVar (dbMutex ?mutex) ()
+  conn <- asks dbConnection
+  !result <- liftIO $ HaSQL.run (session pureJobAssertion pureJobSQL) conn
   return $ case result of
     Left (HaSQL.QueryError _ _ (HaSQL.ClientError err)) ->
       ConnectionError (show err)

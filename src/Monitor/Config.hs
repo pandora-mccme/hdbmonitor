@@ -39,8 +39,7 @@ logMessage event = liftIO $ do
   putMVar (stdoutMutex ?mutex) ()
 
 data Mutexes = Mutexes {
-    dbMutex :: MVar ()
-  , stdoutMutex :: MVar ()
+    stdoutMutex :: MVar ()
   } deriving (Eq)
 
 data Config = Config

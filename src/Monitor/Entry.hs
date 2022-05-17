@@ -139,7 +139,6 @@ label lab action = do
 
 runApp :: Options -> IO ()
 runApp Options{..} = do
-  dbMutex <- newMVar ()
   stdoutMutex <- newMVar ()
   let ?mutex = Mutexes{..} in do
     logMessage "dbmonitor process started."
