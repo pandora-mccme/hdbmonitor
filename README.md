@@ -22,7 +22,7 @@ Structure of the directory is the following (in terms of `ls -R` command output)
 ...
 
 <config-dir>/<database1-dir>:
-conf.dhall check1.sql check2.sql check3.sql ...
+conf.dhall check1.sql check2.sql check3.sql job1.sql ...
 ```
 
 `conf.dhall` is a configuration file for single database. Name of the file is fixed. It stores connection string, list of Telegram IDs of alert-receivers (channels) and some other default settings.
@@ -36,7 +36,7 @@ Example contents of `conf.dhall`:
 }
 ```
 
-Files of checks are real SQL files with optional comments required for setting check behavior. These files may have arbitrary names, even extension is unchecked.
+Files of checks and jobs are plain SQL files with optional comments required for setting check behavior. These files may have arbitrary names, even extension is unchecked.
 
 Proper check file contents may look like that:
 ```
@@ -62,15 +62,15 @@ SELECT count(id) FROM table1 WHERE obligatory_field IS NULL;
 If `assertion` or `frequency` comment is omitted, default value applies.
 These comments must satisfy the following regular expression: `^--\s*[:field:]\s*=\s*[:value:]\s*$`. `description` lines are optional and will appear in alerts.
 
-Assertions can be made on SQL side or on Haskell side and it's more native to do them on SQL side, so `assertion` field may have only one of these values -- `null`, `not null`, `true`, `false`, `zero`.
+Complex assertions can be made on SQL side or on Haskell side and it's more native to do them on SQL side, so `assertion` field may have only one of these values -- `null`, `not null`, `true`, `false`, `zero`, `resultless`. Last value is reserved for jobs.
+
 Frequency is expected to be positive integer. I.e any value less than 1 will be treated as 1, decimal numbers will be truncated.
 
 Incorrect assertion or syntactically wrong query will result in messages to maintainers.
 
 Telegram token is expected to be stored in environmental variable `TG_TOKEN`. You can pass name of the variable as an option. `--token <variable-name>` or `-T <variable-name>`.
 
-**Usage:**
-Running -- `dbmonitor >> .monitor.log &`. It's recommended to put `@reboot dbmonitor >> .monitor.log` line in your `crontab`.
+Log is written to stdout with immediate buffer flushes.
 
 **Options Reference:**
 
@@ -80,7 +80,7 @@ Running -- `dbmonitor >> .monitor.log &`. It's recommended to put `@reboot dbmon
 
 ### Installation.
 
-`dbmonitor` will soon be available as .deb package from repository at `repo`. I don't know distribution details yet, if it's possible to do not via root installation, it will install it in user's crontab and create configuration directory.
+Tool is now available at https://github.com/viviag/db-monitor/pkgs/container/db-monitor.
 
 ### Behavior details
 
@@ -98,7 +98,7 @@ This stability is achived in a following manner:
 
 #### Other implementation details
 
-* We do not track hidden files (prefixed with dot). Also we do not care about plain files on a level of database directories and about directories on level of check files.
+* We do not track hidden files (prefixed with dot). Also we do not care about plain files on a level of database directories but traverse directories on level of check files.
 * If assertion cannot be parsed from `conf.dhall` or check file, it is treated as `not null` instead of throwing error.
 * Database queries are based on `hasql` library, which has quite strict control over what query is expected to return. So you may encounter some unfamiliar errors in Telegram. In all cases we know they are reasonable against provided assertions. Also usage of this library as a backend limits us to PostgeSQL databases. It's possible to extend to other backends.
 * File watch is implemented over `inotify`. It's a Linux kernel subsystem, so it's why tool is Linux-specific. It's possible to extend at least to MacOS using `kqueue` backend.
@@ -108,7 +108,7 @@ This stability is achived in a following manner:
 
 We expect users to be familiar with SQL, but there is a caveat in Telegram.
 
-Usually monitoring channels must be private. It's impossible to send message to private channel by it's name, that's why we restricted channel field of `conf.dhall` to chat ids. And it's tricky to get id of a private channel. There is a lot of instructions over the Intenet, most of them suggest to turn channel to public, send any message to it via API and use `chat_id` from response (make sure it's prefixed with -100). Or there are several bots allowing to do this thing.
+Usually monitoring channels must be private. It's impossible to send message to private channel by it's name, that's why we restricted channel field of `conf.dhall` to chat ids. Id of a private channel may be extracted from URL in a web version on Telegram.
 
 ### Attribution.
 
