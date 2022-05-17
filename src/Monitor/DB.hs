@@ -50,12 +50,12 @@ decodeAssertZero = test <$> D.rowMaybe (D.column (D.nullable D.int4))
 
 session :: Assertion -> ByteString -> HaSQL.Session Bool
 session assertion sql = HaSQL.statement () $ case assertion of
-  AssertNull -> HaSQL.Statement sql E.noParams decodeAssertNull True
-  AssertNotNull -> HaSQL.Statement sql E.noParams decodeAssertNotNull True
-  AssertZero -> HaSQL.Statement sql E.noParams decodeAssertZero True
-  AssertTrue -> HaSQL.Statement sql E.noParams decodeAssertTrue True
-  AssertFalse -> HaSQL.Statement sql E.noParams decodeAssertFalse True
-  AssertResultless -> HaSQL.Statement sql E.noParams decodeAssertResultless True
+  AssertNull -> HaSQL.Statement sql E.noParams decodeAssertNull False
+  AssertNotNull -> HaSQL.Statement sql E.noParams decodeAssertNotNull False
+  AssertZero -> HaSQL.Statement sql E.noParams decodeAssertZero False
+  AssertTrue -> HaSQL.Statement sql E.noParams decodeAssertTrue False
+  AssertFalse -> HaSQL.Statement sql E.noParams decodeAssertFalse False
+  AssertResultless -> HaSQL.Statement sql E.noParams decodeAssertResultless False
 
 runSQL :: (?mutex :: Mutexes) => PureJob -> Monitor JobFeedback
 runSQL PureJob{..} = do
