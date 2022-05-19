@@ -4,11 +4,12 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 49b6ab2d083acf42901d2899cb0c418f517f4e7f909069bfe2572db8c368ad0f
+-- hash: 9c859b810a25966f7ca902eb6e0462a39d88dac9d1fe08213b62663775291f42
 
 name:           db-monitor
 version:        0.1.0.0
 description:    Please see the README on GitHub at <https://github.com/viviag/db-monitor#readme>
+category:       Monitoring
 homepage:       https://github.com/viviag/db-monitor#readme
 bug-reports:    https://github.com/viviag/db-monitor/issues
 author:         Vitalii Guzeev
