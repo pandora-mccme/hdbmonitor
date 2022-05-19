@@ -112,8 +112,8 @@ Usually monitoring channels must be private. It's impossible to send message to 
 
 ### Attribution.
 
-This tool was initially written for HyperMath team at Moscow Center for Continuous Mathematical Education. Our [github](https://github.com/Pandora-MCCME).
-Systems we are maintaning include https://7.math.ru, https://mathtraining.ru and several services for developing interactive texts in school-level mathematics.
+This tool was initially written for HyperMath team at Moscow Center for Continuous Mathematical Education.
+Systems maintaning there include https://7.math.ru, https://mathtraining.ru and several services for developing interactive texts in school-level mathematics.
 
 Code ownership and authorship are my own.
 
