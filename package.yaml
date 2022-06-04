@@ -1,5 +1,5 @@
 name:                db-monitor
-version:             1.0.0.0
+version:             0.1.0
 github:              "viviag/dbmonitor"
 license:             BSD3
 author:              "Vitalii Guzeev"
@@ -8,6 +8,7 @@ copyright:           "2021 Vitalii Guzeev"
 
 extra-source-files:
 - README.md
+- CHANGELOG.md
 
 # Metadata used when publishing your package
 synopsis: Tool performing periodic checks of data invariants which are hard or impossible to be imposed by constraints. For Postgres only.
