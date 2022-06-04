@@ -1,6 +1,6 @@
 name:                db-monitor
-version:             0.1.0.0
-github:              "viviag/db-monitor"
+version:             1.0.0.0
+github:              "viviag/dbmonitor"
 license:             BSD3
 author:              "Vitalii Guzeev"
 maintainer:          "viviag@yandex.ru"
@@ -10,10 +10,10 @@ extra-source-files:
 - README.md
 
 # Metadata used when publishing your package
-# synopsis:            Short description of your package
+synopsis: Tool performing periodic checks of data invariants which are hard or impossible to be imposed by constraints. For Postgres only.
 category: Monitoring
 
-description:    Please see the README on GitHub at <https://github.com/viviag/db-monitor#readme>
+description: Please see the README on GitHub at <https://github.com/viviag/dbmonitor#readme>
 
 dependencies:
 - base >= 4.7
