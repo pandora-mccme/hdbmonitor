@@ -108,7 +108,7 @@ This stability is achived in a following manner:
 
 We expect users to be familiar with SQL, but there is a caveat in Telegram.
 
-Usually monitoring channels must be private. It's impossible to send message to private channel by it's name, that's why we restricted channel field of `conf.dhall` to chat ids. Id of a private channel may be extracted from URL in a web version on Telegram.
+Usually monitoring channels must be private. It's impossible to send message to private channel by it's name, that's why we restricted channel field of `conf.dhall` to chat ids. Id of a private channel may be extracted from URL in a web version of Telegram.
 
 ### Attribution.
 
