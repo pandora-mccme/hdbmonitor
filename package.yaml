@@ -12,7 +12,7 @@ extra-source-files:
 
 # Metadata used when publishing your package
 synopsis: Tool performing periodic checks of data invariants which are hard or impossible to be imposed by constraints. For Postgres only.
-category: Monitoring
+category: Monitoring, Database
 
 description: Please see the README on GitHub at <https://github.com/viviag/dbmonitor#readme>
 
