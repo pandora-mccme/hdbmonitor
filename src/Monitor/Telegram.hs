@@ -16,13 +16,16 @@ import Monitor.DataModel
 
 standardRequest :: SomeChatId -> Text -> SendMessageRequest
 standardRequest chan txt = SendMessageRequest
-  { sendMessageChatId                = chan
-  , sendMessageText                  = txt
-  , sendMessageParseMode             = Just Markdown
-  , sendMessageDisableWebPagePreview = Just True
-  , sendMessageDisableNotification   = Just False
-  , sendMessageReplyToMessageId      = Nothing
-  , sendMessageReplyMarkup           = Nothing
+  { sendMessageChatId                   = chan
+  , sendMessageText                     = txt
+  , sendMessageParseMode                = Just Markdown
+  , sendMessageDisableWebPagePreview    = Just True
+  , sendMessageDisableNotification      = Just False
+  , sendMessageReplyToMessageId         = Nothing
+  , sendMessageReplyMarkup              = Nothing
+  , sendMessageEntities                 = Nothing
+  , sendMessageProtectContent           = Nothing
+  , sendMessageAllowSendingWithoutReply = Nothing
   }
 
 postAlert :: SendMessageRequest -> Monitor ()
