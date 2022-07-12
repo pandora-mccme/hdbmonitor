@@ -80,7 +80,7 @@ Log is written to stdout with immediate buffer flushes.
 
 ### Installation.
 
-Tool is now available at https://github.com/viviag/db-monitor/pkgs/container/db-monitor.
+Tool is now available at https://github.com/pandora-mccme/db-monitor/pkgs/container/db-monitor.
 
 ### Behavior details
 
@@ -112,8 +112,8 @@ Usually monitoring channels must be private. It's impossible to send message to 
 
 ### Attribution.
 
-This tool was initially written for HyperMath team at Moscow Center for Continuous Mathematical Education.
-Systems maintaning there include https://7.math.ru, https://mathtraining.ru and several services for developing interactive texts in school-level mathematics. Due to this reason it has been transferred to public space of the organization.
+This tool was initially written for HyperMath team at Moscow Center for Continuous Mathematical Education. Due to this reason it has been transferred to public space of the organization.
+Systems maintaning there include https://7.math.ru, https://mathtraining.ru and several services for developing interactive texts in school-level mathematics.
 
 Code ownership and authorship are my own.
 
