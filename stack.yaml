@@ -2,7 +2,3 @@ resolver: lts-19.15
 
 packages:
 - .
-
-extra-deps:
-- git: https://github.com/viviag/hinotify.git
-  commit: 652dee779c5fde5f13b5cc2caa1be1453af721fe

@@ -144,11 +144,12 @@ runApp Options{..} = do
     logMessage "dbmonitor process started."
     mDatabaseDirs <- listDirectory optionsDir
     databaseDirs <- filterM doesDirectoryExist (map (optionsDir </>) . filter notHidden $ mDatabaseDirs)
-    mainWatcher@(INotify _ _ _ _ eventsThread) <- initINotify
+    mainWatcher <- initINotify
     void $ addWatch mainWatcher [MoveIn, Create, DeleteSelf] (BSC.pack optionsDir)
             ( label optionsDir . async . watchNewTrack optionsDir optionsToken
             )
     mapM_ (void . async . trackDatabase optionsToken) databaseDirs
-    wait eventsThread
-    logMessage "inotify died"
-    killINotify mainWatcher
+    -- FIXME: should exit properly if somehow fs watcher terminates with daemon running.
+    void . forever $ threadDelay maxBound
+    -- FIXME: signals handling. Take care of non-unix systems.
+    --killINotify mainWatcher
