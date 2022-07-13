@@ -7,7 +7,7 @@
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE ImplicitParams #-}
 {-# LANGUAGE BangPatterns #-}
-module Monitor.Config where
+module Monitor.Configuration.Config where
 
 import System.Console.ANSI
 import System.IO (hFlush, stdout)

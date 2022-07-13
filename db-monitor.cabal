@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 3e564ce106d1e8b8422079b3d10dbf3246015f55cb56de8bd266b66dbf011997
+-- hash: a9b3d6df856207cb9057ed79a62b1663487f99cdf6240f9fdc80a724dc4be6fa
 
 name:           db-monitor
 version:        0.1.0
@@ -29,12 +29,13 @@ source-repository head
 
 library
   exposed-modules:
-      Monitor.Config
+      Monitor.Configuration.Config
+      Monitor.Configuration.Options
+      Monitor.Configuration.Read
       Monitor.DataModel
       Monitor.DB
       Monitor.Entry
       Monitor.Loader
-      Monitor.Options
       Monitor.Queue
       Monitor.Telegram
   other-modules:
@@ -50,8 +51,8 @@ library
     , dhall >=1.40.2 && <1.42
     , directory >=1.3.3 && <1.4
     , filepath >=1.4.2 && <1.5
+    , fsnotify >=0.3.0 && <0.4
     , hasql >=1.4.4 && <=1.5.0.5
-    , hinotify >=0.4.1 && <0.5
     , lifted-base >=0.2.3 && <0.3
     , monad-control >=1.0.3 && <1.1
     , mtl >=2.2.2 && <2.3
@@ -81,8 +82,8 @@ executable dbmonitor
     , dhall >=1.40.2 && <1.42
     , directory >=1.3.3 && <1.4
     , filepath >=1.4.2 && <1.5
+    , fsnotify >=0.3.0 && <0.4
     , hasql >=1.4.4 && <=1.5.0.5
-    , hinotify >=0.4.1 && <0.5
     , lifted-base >=0.2.3 && <0.3
     , monad-control >=1.0.3 && <1.1
     , mtl >=2.2.2 && <2.3
