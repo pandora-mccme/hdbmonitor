@@ -41,7 +41,6 @@ library:
   source-dirs: src
   ghc-options:
   - -Wall
-  - -Werror
 
 executables:
   dbmonitor:
@@ -53,6 +52,5 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     - -Wall
-    - -Werror
     dependencies:
     - db-monitor
