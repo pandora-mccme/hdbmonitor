@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 3e564ce106d1e8b8422079b3d10dbf3246015f55cb56de8bd266b66dbf011997
+-- hash: 175e70a8798aaa00b1184b064a5b9e98a12f919aa100896b7a19bb519efef1ba
 
 name:           db-monitor
 version:        0.1.0
@@ -29,12 +29,13 @@ source-repository head
 
 library
   exposed-modules:
-      Monitor.Config
+      Monitor.Configuration.Config
+      Monitor.Configuration.Options
+      Monitor.Configuration.Read
       Monitor.DataModel
       Monitor.DB
       Monitor.Entry
       Monitor.Loader
-      Monitor.Options
       Monitor.Queue
       Monitor.Telegram
   other-modules:
@@ -50,8 +51,8 @@ library
     , dhall >=1.40.2 && <1.42
     , directory >=1.3.3 && <1.4
     , filepath >=1.4.2 && <1.5
+    , fsnotify >=0.3.0 && <0.4
     , hasql >=1.4.4 && <=1.5.0.5
-    , hinotify >=0.4.1 && <0.5
     , lifted-base >=0.2.3 && <0.3
     , monad-control >=1.0.3 && <1.1
     , mtl >=2.2.2 && <2.3
@@ -71,7 +72,7 @@ executable dbmonitor
       Paths_db_monitor
   hs-source-dirs:
       app
-  ghc-options: -threaded -eventlog -rtsopts -with-rtsopts=-N -Wall -Werror
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wall -Werror
   build-depends:
       ansi-terminal >=0.11.3 && <0.12
     , async >=2.2.2 && <2.3
@@ -81,8 +82,8 @@ executable dbmonitor
     , dhall >=1.40.2 && <1.42
     , directory >=1.3.3 && <1.4
     , filepath >=1.4.2 && <1.5
+    , fsnotify >=0.3.0 && <0.4
     , hasql >=1.4.4 && <=1.5.0.5
-    , hinotify >=0.4.1 && <0.5
     , lifted-base >=0.2.3 && <0.3
     , monad-control >=1.0.3 && <1.1
     , mtl >=2.2.2 && <2.3

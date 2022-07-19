@@ -11,7 +11,6 @@ import Control.Concurrent.STM.TVar
 
 import System.Directory
 import System.FilePath
-import System.INotify
 
 import qualified Data.HashMap.Strict as HM
 import Data.Maybe
@@ -108,8 +107,8 @@ destroyQueue = do
   mapM_ (liftIO . killThread) $ HM.elems queue
   liftIO . atomically $ modifyTVar queueTVar (\_ -> HM.empty)
 
-destroyMonitor :: (?mutex :: Mutexes) => INotify -> Monitor ()
-destroyMonitor watcher = do
+destroyMonitor :: (?mutex :: Mutexes) => MVar () -> Monitor ()
+destroyMonitor monitorHolder = do
+  liftIO $ putMVar monitorHolder ()
   destroyQueue
   alertThreadDeath
-  liftIO $ killINotify watcher

@@ -1,4 +1,4 @@
-module Monitor.Options where
+module Monitor.Configuration.Options where
 
 import Options.Applicative
 

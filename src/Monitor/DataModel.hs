@@ -2,6 +2,8 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE StrictData #-}
+{-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Monitor.DataModel (
     module Monitor.DataModel
   , module Control.Monad.Reader
@@ -18,21 +20,17 @@ import Control.Monad.Trans.Control
 
 import Data.ByteString (ByteString)
 
-import Monitor.Config
+import Monitor.Configuration.Config
 
 newtype Monitor a = Monitor {getMonitor :: ReaderT Settings IO a} deriving
-  (Functor, Applicative, Monad, MonadIO, MonadReader Settings, MonadBase IO)
-
-instance MonadBaseControl IO Monitor where
-  type StM Monitor a = a
-  liftBaseWith f = Monitor $ liftBaseWith $ \q -> f (q . getMonitor)
-  restoreM = Monitor . restoreM
+  (Functor, Applicative, Monad, MonadIO, MonadReader Settings, MonadBase IO, MonadBaseControl IO)
+  via ReaderT Settings IO
 
 configName :: FilePath
 configName = "conf.dhall"
 
-data JobAction = Start | Restart | Remove
-  deriving (Eq, Show)
+representsConfigName :: FilePath -> Bool
+representsConfigName path = path == configName
 
 data JobFeedback = ConnectionError String
                  | QueryError String
