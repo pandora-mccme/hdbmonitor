@@ -80,7 +80,7 @@ Log is written to stdout with immediate buffer flushes.
 
 ### Installation.
 
-Tool is now available at https://github.com/pandora-mccme/db-monitor/pkgs/container/db-monitor.
+Tool is now available at https://github.com/pandora-mccme/dbmonitor/pkgs/container/dbmonitor.
 
 ### Behavior details
 
