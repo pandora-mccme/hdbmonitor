@@ -4,17 +4,16 @@ github:              "viviag/dbmonitor"
 license:             BSD3
 author:              "Vitalii Guzeev"
 maintainer:          "viviag@yandex.ru"
-copyright:           "2021 Vitalii Guzeev"
+copyright:           "2021-2022 Vitalii Guzeev"
 
 extra-source-files:
 - README.md
 - CHANGELOG.md
 
-# Metadata used when publishing your package
-synopsis: Tool performing periodic checks of data invariants which are hard or impossible to be imposed by constraints. For Postgres only.
+synopsis: Data consistency alerting for PostgreSQL
 category: Monitoring, Database
 
-description: Please see the README on GitHub at <https://github.com/viviag/dbmonitor#readme>
+description: Tool performing periodic checks of data invariants which are hard or impossible to be imposed by constraints. For Postgres only.
 
 dependencies:
 - ansi-terminal        >= 0.11.3 && < 0.12

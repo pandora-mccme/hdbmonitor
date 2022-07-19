@@ -4,18 +4,18 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: d580c3c724b65d1cf4ca134bc6d9376cb5e3f230645c82c982330fbf272b33d6
+-- hash: 3f385b06aa3691808bce1abc5bed8d6611edeb1218af524ea21d8832caf8caec
 
 name:           db-monitor
 version:        0.1.0
-synopsis:       Tool performing periodic checks of data invariants which are hard or impossible to be imposed by constraints. For Postgres only.
-description:    Please see the README on GitHub at <https://github.com/viviag/dbmonitor#readme>
+synopsis:       Data consistency alerting for PostgreSQL
+description:    Tool performing periodic checks of data invariants which are hard or impossible to be imposed by constraints. For Postgres only.
 category:       Monitoring, Database
 homepage:       https://github.com/viviag/dbmonitor#readme
 bug-reports:    https://github.com/viviag/dbmonitor/issues
 author:         Vitalii Guzeev
 maintainer:     viviag@yandex.ru
-copyright:      2021 Vitalii Guzeev
+copyright:      2021-2022 Vitalii Guzeev
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple

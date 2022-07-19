@@ -110,9 +110,6 @@ Usually monitoring channels must be private. It's impossible to send message to 
 
 ### Attribution.
 
-This tool was initially written for HyperMath team at Moscow Center for Continuous Mathematical Education. Due to this reason it has been transferred to public space of the organization.
-Systems maintaning there include https://7.math.ru, https://mathtraining.ru and several services for developing interactive texts in school-level mathematics.
-
-Code ownership and authorship are my own.
+This tool was initially written for HyperMath team at Moscow Center for Continuous Mathematical Education.
 
 **_Issues and pull requests are welcome._**
