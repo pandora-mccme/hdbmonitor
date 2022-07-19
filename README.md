@@ -3,11 +3,11 @@
 This simple tool periodically runs provided SQL-queries and alerts DBAs about failed checks via Telegram.
 It's highly configurable and tracks configuration changes.
 
-We believe such an instrument may help those who are administrating one or several databases on a single Linux server to find data malformations early. Hence promptly notify developers about possible bugs and other oddities like inaccurate manual data manipulation. Other use case -- executing periodic actions like vacuuming on database with failure alerts.
+We believe such an instrument may help those who are administrating one or several databases on a single server to find data malformations early. Hence promptly notify developers about possible bugs and other oddities like inaccurate manual data manipulation. Other use case -- executing periodic actions like vacuuming on database with failure alerts.
 
 And we hope it allows more structured monitoring process than arbitrary one built on shell scripts.
 
-All unnecessary restrictions (PostgreSQL, Telegram, Linux with `libc6` >= 2.29) are coming from our limited resources and current conditions. They are not ideological, so we will be glad to accept pull requests broadening domain of the tool.
+All unnecessary restrictions (PostgreSQL, Telegram) are coming from our limited resources and current conditions. They are not ideological, so we will be glad to accept pull requests broadening domain of the tool.
 
 ### Configuration and usage.
 
@@ -36,7 +36,7 @@ Example contents of `conf.dhall`:
 }
 ```
 
-Files of checks and jobs are plain SQL files with optional comments required for setting check behavior. These files may have arbitrary names with .sql extension.
+Files of checks and jobs are plain SQL files with optional comments required for setting check behavior. These files may have arbitrary names and are searched recursively in configuration directory. Hidden files are never tracked.
 
 Proper check file contents may look like that:
 ```
@@ -93,15 +93,13 @@ This stability is achived in a following manner:
 * System tracks changes in check files and automatically reload them.
 * New check files are automatically tracked and run as jobs.
 * On removal of check file tool stops executing related job. Same for database directories - directory deletion causes monitor for this directory to stop.
-* `conf.dhall` changes are tracked. If config is invalid, old jobs are removed, but database monitor is not stopped, after config fix everything will work again.
-* On removal of `.monitor` directory tool dies with error message.
+* `conf.dhall` changes are tracked. If config is invalid, old jobs are removed, but database monitor is not stopped, when config is fixed everything will work again.
 
 #### Other implementation details
 
-* We do not track hidden files (prefixed with dot). Also we do not care about plain files on a level of database directories but traverse directories on level of check files.
 * If assertion cannot be parsed from `conf.dhall` or check file, it is treated as `not null` instead of throwing error.
 * Database queries are based on `hasql` library, which has quite strict control over what query is expected to return. So you may encounter some unfamiliar errors in Telegram. In all cases we know they are reasonable against provided assertions. Also usage of this library as a backend limits us to PostgeSQL databases. It's possible to extend to other backends.
-* File watch is implemented over `inotify`. It's a Linux kernel subsystem, so it's why tool is Linux-specific. It's possible to extend at least to MacOS using `kqueue` backend.
+* File watch was never tested on Mac and Windows.
 * Hopefully you will find our logs detailed but not floody.
 
 ### Telegram caveat.
