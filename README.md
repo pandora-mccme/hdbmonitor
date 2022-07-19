@@ -1,4 +1,6 @@
-## db-monitor: data consistency monitoring for PostgreSQL.
+# db-monitor: data consistency monitoring for PostgreSQL.
+
+[![Hackage](https://img.shields.io/hackage/v/dbmonitor.svg)](http://hackage.haskell.org/package/dbmonitor)
 
 This simple tool periodically runs provided SQL-queries and alerts DBAs about failed checks via Telegram.
 It's highly configurable and tracks configuration changes.
@@ -80,7 +82,10 @@ Log is written to stdout with immediate buffer flushes.
 
 ### Installation.
 
-Tool is now available at https://github.com/pandora-mccme/dbmonitor/pkgs/container/dbmonitor.
+There are several options:
+- Tool is now available at https://github.com/pandora-mccme/dbmonitor/pkgs/container/dbmonitor.
+- It can be installed via `cabal install dbmonitor`.
+- It can be cloned or downloaded  fron Github and built from source using Stack.
 
 ### Behavior details
 
