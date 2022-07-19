@@ -23,7 +23,7 @@ import Monitor.DataModel
 watchTower :: (?mutex :: Mutexes)
            => MVar () -> FilePath -> String -> Settings
            -> TVar (HashMap FilePath (MVar ())) -> Event -> IO ()
-watchTower monitorHolder dir tgvar cfg locks event = do
+watchTower monitorHolder dir tgvar cfg locksTVar event = do
   let path = eventPath event
       filename = takeFileName path
   if isCheck filename
@@ -40,31 +40,31 @@ watchTower monitorHolder dir tgvar cfg locks event = do
       putMVar monitorHolder ()
       flip runReaderT cfg . getMonitor $ destroyQueue
       logMessage ("Monitor at " <> dir <> " is stopped due to configuration change. All jobs are removed, monitor will be restarted.")
-      trackDatabase tgvar dir locks
+      trackDatabase tgvar dir locksTVar
 
 trackDatabase :: (?mutex :: Mutexes) => String -> FilePath
               -> TVar (HashMap FilePath (MVar ())) -> IO ()
-trackDatabase tgvar dbDir locks = do
+trackDatabase tgvar dbDir locksTVar = do
   (cfg, checks) <- readMonitor dbDir tgvar
   logMessage $ "Monitor at " <> dbDir <> " is started."
   withManager $
     \monitorManager -> do
       lock <- newEmptyMVar
-      atomically $ modifyTVar locks (HM.insert dbDir lock)
+      atomically $ modifyTVar locksTVar (HM.insert dbDir lock)
       void $ watchTree monitorManager dbDir (const True)
-             (watchTower lock dbDir tgvar cfg locks)
+             (watchTower lock dbDir tgvar cfg locksTVar)
       mapM_ (\f -> void . async $ runReaderT (getMonitor $ startJob f) cfg) checks
       takeMVar lock
 
 watchNewTrack :: (?mutex :: Mutexes) => String
               -> TVar (HashMap FilePath (MVar ())) -> Event -> IO ()
-watchNewTrack _ locks (Removed path _ True) = do
-  locksList <- liftIO $ readTVarIO locks
-  putMVar (locksList HM.! path) ()
-  atomically $ modifyTVar locks (HM.delete path)
+watchNewTrack _ locksTVar (Removed path _ True) = do
+  locks <- liftIO $ readTVarIO locksTVar
+  putMVar (locks HM.! path) ()
+  atomically $ modifyTVar locksTVar (HM.delete path)
   logMessage $ "Monitor at " <> path <> " is stopped due to directory deletion."
-watchNewTrack tgvar locks (Added path _ True) =
-  spawnMonitorThread tgvar locks path
+watchNewTrack tgvar locksTVar (Added path _ True) =
+  spawnMonitorThread tgvar locksTVar path
 watchNewTrack _ _ _ = pure ()
 
 label :: String -> IO (Async ()) -> IO ()
@@ -74,8 +74,8 @@ label lab action = do
 
 spawnMonitorThread :: (?mutex :: Mutexes) => String
                    -> TVar (HashMap FilePath (MVar ())) -> FilePath -> IO ()
-spawnMonitorThread tgvar locks dir =
-  label dir . async $ trackDatabase tgvar dir locks
+spawnMonitorThread tgvar locksTVar dir =
+  label dir . async $ trackDatabase tgvar dir locksTVar
 
 runApp :: Options -> IO ()
 runApp Options{..} = do
@@ -84,10 +84,10 @@ runApp Options{..} = do
     logMessage "dbmonitor process started."
     databaseDirs <- collectMonitors optionsDir
     eventChannel <- newChan
-    locks <- newTVarIO HM.empty
+    locksTVar <- newTVarIO HM.empty
     withManager $ \mainWatcher -> do
       void $ watchTreeChan mainWatcher optionsDir (const True) eventChannel
-      forM_ databaseDirs $ spawnMonitorThread optionsToken locks
+      forM_ databaseDirs $ spawnMonitorThread optionsToken locksTVar
       forever $ do
         event <- readChan eventChannel
-        watchNewTrack optionsToken locks event
+        watchNewTrack optionsToken locksTVar event
