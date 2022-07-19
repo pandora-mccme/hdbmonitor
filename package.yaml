@@ -49,7 +49,7 @@ executables:
     source-dirs:         app
     ghc-options:
     - -threaded
-    - -eventlog
+#    - -eventlog
     - -rtsopts
     - -with-rtsopts=-N
     - -Wall

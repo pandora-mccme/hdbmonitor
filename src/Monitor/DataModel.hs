@@ -29,8 +29,8 @@ newtype Monitor a = Monitor {getMonitor :: ReaderT Settings IO a} deriving
 configName :: FilePath
 configName = "conf.dhall"
 
-data JobAction = Start | Restart | Remove
-  deriving (Eq, Show)
+representsConfigName :: FilePath -> Bool
+representsConfigName path = path == configName
 
 data JobFeedback = ConnectionError String
                  | QueryError String
