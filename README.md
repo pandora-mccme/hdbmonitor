@@ -1,4 +1,4 @@
-# db-monitor: data consistency monitoring for PostgreSQL.
+# dbmonitor: data consistency monitoring for PostgreSQL.
 
 [![Hackage](https://img.shields.io/hackage/v/dbmonitor.svg)](http://hackage.haskell.org/package/dbmonitor)
 
