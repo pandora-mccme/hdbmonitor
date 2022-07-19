@@ -20,8 +20,10 @@ import Monitor.DataModel
 collectMonitors :: FilePath -> IO [FilePath]
 collectMonitors configDir = do
   mDatabaseDirs <- listDirectory configDir
-  filterM doesDirectoryExist
+  relativePaths <- filterM doesDirectoryExist
     (map (configDir </>) . filter notHidden $ mDatabaseDirs)
+  currentDir <- getCurrentDirectory
+  return $ map (currentDir </>) relativePaths
 
 tryReadConfig :: (?mutex :: Mutexes) => FilePath -> MVar () -> String -> IO Settings
 tryReadConfig dir configChange tgvar = do
