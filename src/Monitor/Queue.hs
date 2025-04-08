@@ -8,6 +8,7 @@ import GHC.Conc
 import Control.Concurrent
 import qualified Control.Concurrent.Lifted as Lifted
 import Control.Concurrent.STM.TVar
+import Control.Monad (forever, void)
 
 import System.Directory
 import System.FilePath

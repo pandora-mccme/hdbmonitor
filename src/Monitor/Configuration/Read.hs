@@ -9,6 +9,7 @@ module Monitor.Configuration.Read
   where
 
 import Control.Concurrent
+import Control.Monad (filterM)
 
 import System.Directory
 import System.FilePath

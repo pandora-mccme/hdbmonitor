@@ -10,6 +10,7 @@ import System.FSNotify
 import Control.Concurrent
 import Control.Concurrent.Async
 import Control.Concurrent.STM.TVar
+import Control.Monad
 
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
@@ -32,9 +33,9 @@ watchTower monitorHolder dir tgvar cfg locksTVar event = do
                  . flip runReaderT cfg
                  . getMonitor $
         case event of
-          Modified _ _ False -> restartJob path
-          Removed _ _ False -> removeJob path
-          Added _ _ False -> startJob path
+          Modified _ _ IsFile -> restartJob path
+          Removed _ _ IsFile -> removeJob path
+          Added _ _ IsFile -> startJob path
           _ -> pure ()
     else when (representsConfigName filename) $ do
       putMVar monitorHolder ()
@@ -58,12 +59,12 @@ trackDatabase tgvar dbDir locksTVar = do
 
 watchNewTrack :: (?mutex :: Mutexes) => String
               -> TVar (HashMap FilePath (MVar ())) -> Event -> IO ()
-watchNewTrack _ locksTVar (Removed path _ True) = do
+watchNewTrack _ locksTVar (Removed path _ IsDirectory) = do
   locks <- liftIO $ readTVarIO locksTVar
   putMVar (locks HM.! path) ()
   atomically $ modifyTVar locksTVar (HM.delete path)
   logMessage $ "Monitor at " <> path <> " is stopped due to directory deletion."
-watchNewTrack tgvar locksTVar (Added path _ True) =
+watchNewTrack tgvar locksTVar (Added path _ IsDirectory) =
   spawnMonitorThread tgvar locksTVar path
 watchNewTrack _ _ _ = pure ()
 
