@@ -17,12 +17,9 @@ import Control.Concurrent.STM.TVar
 import Control.Exception
 import Control.Monad.IO.Class
 
-import qualified Data.ByteString.Char8 as BSC
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
 import Data.Time
-
-import qualified Hasql.Connection as HaSQL
 
 import Dhall ( Generic, auto, inputFile, FromDhall, Natural )
 import Dhall.Deriving
@@ -58,7 +55,7 @@ data Assertion = AssertNull | AssertNotNull | AssertTrue | AssertFalse | AssertZ
   deriving (Eq, Show)
 
 data Settings = Settings
-  { dbConnection :: HaSQL.Connection
+  { dbConnection :: String
   , channels :: [Integer]
   , defaultFrequency :: Int
   , defaultAssertion :: Assertion
@@ -85,19 +82,13 @@ readSettings dbDir tokenVar configPath = do
       putStrLn ("Exception: " <> show @SomeException ex)
       return Nothing
     Right Config{..} -> do
-      dbConnection <- HaSQL.acquire (BSC.pack configConnection)
-      case dbConnection of
-        Left _ -> do
-          logMessage ("Config error: connection string for " <> dbDir <> " directory does not provide connection to any database")
-          return Nothing
-        Right conn -> do
-          queue <- newTVarIO HM.empty
-          return . Just $ Settings
-            { dbConnection = conn
-            , channels = map fromIntegral configChannels
-            , defaultFrequency = fromIntegral configFrequency
-            , defaultAssertion = readAssertion configAssertion
-            , telegramTokenVar = tokenVar
-            , databaseDirectory = dbDir
-            , jobQueue = queue
-            }
+      queue <- newTVarIO HM.empty
+      return . Just $ Settings
+        { dbConnection = configConnection
+        , channels = map fromIntegral configChannels
+        , defaultFrequency = fromIntegral configFrequency
+        , defaultAssertion = readAssertion configAssertion
+        , telegramTokenVar = tokenVar
+        , databaseDirectory = dbDir
+        , jobQueue = queue
+        }

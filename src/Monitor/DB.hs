@@ -3,9 +3,13 @@
 {-# LANGUAGE BangPatterns #-}
 module Monitor.DB where
 
+import Control.Exception.Lifted (bracket)
+
 import Data.ByteString (ByteString)
+import qualified Data.ByteString.Char8 as BSC
 import qualified Data.Vector as V
 
+import qualified Hasql.Connection as HaSQL
 import qualified Hasql.Session as HaSQL
 import qualified Hasql.Statement as HaSQL
 import qualified Hasql.Decoders as D
@@ -58,11 +62,16 @@ session assertion sql = HaSQL.statement () $ case assertion of
 
 runSQL :: PureJob -> Monitor JobFeedback
 runSQL PureJob{..} = do
-  conn <- asks dbConnection
-  !result <- liftIO $ HaSQL.run (session pureJobAssertion pureJobSQL) conn
-  return $ case result of
-    Left (HaSQL.QueryError _ _ (HaSQL.ClientError err)) ->
-      ConnectionError (show err)
-    Left (HaSQL.QueryError _ _ (HaSQL.ResultError err)) ->
-      QueryError (show err)
-    Right assertionResult -> AssertionResult assertionResult
+  connectionString <- asks dbConnection
+  bracket (liftIO $ HaSQL.acquire (BSC.pack connectionString))
+          (liftIO . mapM HaSQL.release) $ \econn -> do
+    case econn of
+      Left err -> return $ ConnectionError (show err)
+      Right conn -> do
+        !result <- liftIO $ HaSQL.run (session pureJobAssertion pureJobSQL) conn
+        return $ case result of
+          Left (HaSQL.QueryError _ _ (HaSQL.ClientError err)) ->
+            ConnectionError (show err)
+          Left (HaSQL.QueryError _ _ (HaSQL.ResultError err)) ->
+            QueryError (show err)
+          Right assertionResult -> AssertionResult assertionResult
