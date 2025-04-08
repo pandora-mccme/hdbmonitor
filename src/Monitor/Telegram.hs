@@ -3,14 +3,16 @@
 {-# LANGUAGE ImplicitParams #-}
 module Monitor.Telegram where
 
+import System.Environment (getEnv)
+
 import Data.ByteString (ByteString)
+import Data.String (fromString)
 import Data.Text (pack, Text)
 import Data.Text.Encoding (decodeUtf8)
 
 import Telegram.Bot.API.MakingRequests
 import Telegram.Bot.API.Methods
 import Telegram.Bot.API.Types
-import Telegram.Bot.Simple.BotApp (getEnvToken)
 
 import Monitor.DataModel
 
@@ -31,7 +33,7 @@ standardRequest chan txt = SendMessageRequest
 
 postAlert :: SendMessageRequest -> Monitor ()
 postAlert msg = asks telegramTokenVar >>= \tgvar -> liftIO $ do
-  token <- getEnvToken tgvar
+  token <- fromString <$> getEnv tgvar
   resp <- defaultRunBot token (sendMessage msg)
   print resp
 

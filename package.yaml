@@ -35,7 +35,6 @@ dependencies:
 - lifted-base          >= 0.2.3
 - monad-control        >= 1.0.3
 - transformers-base    >= 0.4.6
-- telegram-bot-simple  >= 0.4.5
 - telegram-bot-api
 library:
   source-dirs: src
